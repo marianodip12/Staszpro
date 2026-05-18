@@ -117,11 +117,14 @@ export function useVideoUpload({ orgId, matchId, onSuccess, onError }: UseVideoU
 
       // Mark error in DB if we got that far
       if (videoAssetId) {
-        await supabase
-          .from('video_assets')
-          .update({ status: 'error' })
-          .eq('id', videoAssetId)
-          .catch(() => null);   // best-effort
+        try {
+          await supabase
+            .from('video_assets')
+            .update({ status: 'error' })
+            .eq('id', videoAssetId);
+        } catch {
+          // best-effort, ignore DB errors
+        }
       }
 
       setProgress((p) => p ? { ...p, status: 'error', error: error.message } : null);
