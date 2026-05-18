@@ -8,7 +8,8 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServer } from '@/lib/supabase';
 import { Play, BarChart3, TrendingUp, Users, Plus, ChevronRight, Trophy } from 'lucide-react';
 import { seasonTotals } from '@sportiq/core/handball';
-import type { Match, MatchSummary } from '@sportiq/core';
+import type { Match } from '@sportiq/core';
+import type { MatchSummary } from '@sportiq/core/handball';
 
 interface DashboardProps {
   params: Promise<{ orgSlug: string }>;
