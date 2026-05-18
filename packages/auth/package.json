@@ -1,0 +1,20 @@
+{
+  "name": "@sportiq/auth",
+  "version": "0.1.0",
+  "description": "SportIQ — Auth helpers, Supabase client factory, org context, plan guards.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build":     "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sportiq/core":         "workspace:*",
+    "@supabase/supabase-js": "^2.48.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

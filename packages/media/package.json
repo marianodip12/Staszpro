@@ -1,0 +1,25 @@
+{
+  "name": "@sportiq/media",
+  "version": "0.1.0",
+  "description": "SportIQ — Pure media domain: video assets, clip signatures, render jobs, storage abstraction. No sport logic.",
+  "type": "module",
+  "exports": {
+    ".":         "./src/index.ts",
+    "./types":   "./src/types/index.ts",
+    "./storage": "./src/storage/provider.ts",
+    "./clip":    "./src/clip/signature.ts",
+    "./timeline":"./src/timeline/index.ts"
+  },
+  "scripts": {
+    "build":     "tsc -p tsconfig.json",
+    "test":      "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest":     "^2.1.0"
+  }
+}
