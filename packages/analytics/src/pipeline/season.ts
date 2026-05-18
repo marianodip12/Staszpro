@@ -19,7 +19,7 @@ import {
   seasonTotals,
   seasonTimeline,
 } from '@sportiq/core/handball';
-import type { HandballEvent, MatchSummary, SeasonStats } from '@sportiq/core/handball';
+import type { HandballEvent, MatchSummary, SeasonTotals } from '@sportiq/core/handball';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export interface MatchRecord {
 }
 
 export interface SeasonAggregates {
-  totals:        SeasonStats;
+  totals:        SeasonTotals;
   form:          MatchResult[];          // last 5 results
   avgGoalsFor:   number;
   avgGoalsAgainst: number;
