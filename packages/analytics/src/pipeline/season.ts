@@ -279,4 +279,4 @@ function safe(n: number, decimals = 0): number {
   return Math.round(n * factor) / factor;
 }
 
-export type { SeasonStats };
+export type { SeasonTotals };
