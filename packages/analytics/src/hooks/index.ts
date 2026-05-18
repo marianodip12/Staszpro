@@ -58,12 +58,12 @@ export function useFormIndicator(
     if (records.length === 0) return { form: [], streak: null, winRate: 0 };
 
     const agg = computeSeasonAggregates(records, myTeamName);
-    const form = agg.totals.played > 0
+    const totalMatches = agg.totals.total;
+    const form = totalMatches > 0
       ? buildRawForm(records, myTeamName).slice(-last)
       : [];
 
-    const played  = agg.totals.played;
-    const winRate = played === 0 ? 0 : Math.round((agg.totals.wins / played) * 100);
+    const winRate = totalMatches === 0 ? 0 : Math.round((agg.totals.w / totalMatches) * 100);
 
     return {
       form,
