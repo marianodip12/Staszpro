@@ -90,10 +90,7 @@ export function TimelineEditor({
   }, [rawClips]);
 
   const totalDuration = useMemo(() =>
-    timelineDuration(layoutedClips.map((c) => ({
-      start_in_timeline: c.start_in_timeline,
-      end_in_timeline:   c.end_in_timeline,
-    }))),
+    timelineDuration(layoutedClips),
     [layoutedClips]
   );
 
