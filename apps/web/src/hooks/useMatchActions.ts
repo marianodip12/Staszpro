@@ -9,7 +9,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 
 interface UseMatchActionsOptions {
   matchId:  string;

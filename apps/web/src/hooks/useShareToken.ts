@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 
 export function useShareToken(matchId: string, initialToken: string | null = null) {
   const supabase = useSupabase();

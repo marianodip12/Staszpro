@@ -8,7 +8,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X, Calendar, Trophy } from 'lucide-react';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import { useLiveMatchStore } from '@/stores/live-match.store';
 import type { Team } from '@sportiq/core';
 

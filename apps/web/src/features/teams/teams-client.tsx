@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Pencil, Trash2, Users, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import type { Team, Player, PlayerPosition } from '@sportiq/core';
 
 const POSITIONS: Array<{ id: PlayerPosition; label: string }> = [

@@ -15,7 +15,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { Session, User, AuthError } from '@supabase/supabase-js';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 
 interface SignUpInput {
   email:        string;

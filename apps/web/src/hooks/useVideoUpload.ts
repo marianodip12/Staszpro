@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import { useStorageProvider } from '@/lib/storage';
 import { StoragePaths } from '@sportiq/media/storage';
 import type { VideoAsset, UploadProgress } from '@sportiq/media';

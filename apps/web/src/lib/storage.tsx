@@ -10,7 +10,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { SupabaseStorageProvider, type StorageProvider } from '@sportiq/media/storage';
-import { getSupabaseBrowser } from '@/lib/supabase';
+import { getSupabaseBrowser } from '@/lib/supabase-provider';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 

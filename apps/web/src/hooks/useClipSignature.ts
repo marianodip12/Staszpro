@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import { buildClipSignature, validateClipBounds } from '@sportiq/media/clip';
 import type { OverlaySpec, ClipSignature, RenderAsset } from '@sportiq/media';
 

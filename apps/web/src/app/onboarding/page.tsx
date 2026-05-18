@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { Zap, ArrowRight, Trophy, LogOut } from 'lucide-react';
 import { Button, Field, Input } from '@sportiq/ui';
 import { useAuth } from '@/hooks/useAuth';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import type { SportType } from '@sportiq/core';
 
 interface SportOption {

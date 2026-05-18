@@ -17,7 +17,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import { useLiveMatchStore } from '@/stores/live-match.store';
 import { rowToHandballEvent } from '@sportiq/core/handball';
 import type { MatchEvent } from '@sportiq/core';

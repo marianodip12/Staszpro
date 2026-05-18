@@ -14,7 +14,7 @@ import {
   Trash2, ExternalLink,
 } from 'lucide-react';
 import { Button, Field, Input, Dialog, DialogHeader, DialogBody, DialogFooter, useToast } from '@sportiq/ui';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import { useAuth } from '@/hooks/useAuth';
 import type { Organization, OrgMemberRole, UserProfile, OrgPlan } from '@sportiq/core';
 

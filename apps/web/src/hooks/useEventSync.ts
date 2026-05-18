@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useSupabase } from '@/lib/supabase';
+import { useSupabase } from '@/lib/supabase-provider';
 import {
   useLiveMatchStore,
   type PendingEvent,
