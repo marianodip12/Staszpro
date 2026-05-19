@@ -14,14 +14,14 @@ import { parseYouTubeUrl } from '@/lib/youtube';
 import type { VideoAsset } from '@/domain/video';
 
 interface VideoLoaderProps {
-  orgId: string;
-  matchId: string;
+  userId: string;
+  matchLocalId: string;
   onLoaded: (asset: VideoAsset) => void;
 }
 
 type Mode = 'choose' | 'youtube' | 'upload';
 
-export const VideoLoader = ({ orgId, matchId, onLoaded }: VideoLoaderProps) => {
+export const VideoLoader = ({ userId, matchLocalId, onLoaded }: VideoLoaderProps) => {
   const [mode, setMode] = useState<Mode>('choose');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,8 +41,8 @@ export const VideoLoader = ({ orgId, matchId, onLoaded }: VideoLoaderProps) => {
     setBusy(true);
     try {
       const asset = await createVideoAsset({
-        orgId,
-        matchId,
+        userId,
+        matchLocalId,
         sourceType: 'youtube',
         youtubeUrl: ytUrl.trim(),
         youtubeVideoId: videoId,
@@ -53,7 +53,7 @@ export const VideoLoader = ({ orgId, matchId, onLoaded }: VideoLoaderProps) => {
     } finally {
       setBusy(false);
     }
-  }, [ytUrl, orgId, matchId, onLoaded]);
+  }, [ytUrl, userId, matchLocalId, onLoaded]);
 
   // ── Upload ──────────────────────────────────────────────────────────────
   const handleFile = useCallback(
@@ -67,14 +67,14 @@ export const VideoLoader = ({ orgId, matchId, onLoaded }: VideoLoaderProps) => {
       setProgressPct(0);
       try {
         const result = await uploadVideoFile({
-          orgId,
-          matchId,
+          userId,
+          matchLocalId,
           file,
           onProgress: (p) => setProgressPct(p.pct),
         });
         const asset = await createVideoAsset({
-          orgId,
-          matchId,
+          userId,
+          matchLocalId,
           sourceType: 'upload',
           storagePath: result.storagePath,
           fileSize: result.fileSize,
@@ -88,7 +88,7 @@ export const VideoLoader = ({ orgId, matchId, onLoaded }: VideoLoaderProps) => {
         setBusy(false);
       }
     },
-    [orgId, matchId, onLoaded],
+    [userId, matchLocalId, onLoaded],
   );
 
   const handleFileInput = useCallback(

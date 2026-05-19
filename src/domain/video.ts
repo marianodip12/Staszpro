@@ -12,8 +12,14 @@ export type VideoStatus = 'uploading' | 'processing' | 'ready' | 'error';
 
 export interface VideoAsset {
   id: string;
-  org_id: string;
+  /** User who owns this video (Handball-Pro user-based ownership). */
+  user_id: string | null;
+  /** Org id (only used in SportIQ-style multi-tenant setup). */
+  org_id: string | null;
+  /** UUID match id (SportIQ). Null in Handball-Pro. */
   match_id: string | null;
+  /** Local match id from `partidos` table (Handball-Pro). */
+  match_local_id: string | null;
   source_type: VideoSourceType;
   /** For 'upload': Supabase Storage path. For 'youtube': empty. */
   storage_path: string;
@@ -34,8 +40,10 @@ export interface VideoAsset {
 
 export interface Clip {
   id: string;
-  org_id: string;
+  user_id: string | null;
+  org_id: string | null;
   match_id: string | null;
+  match_local_id: string | null;
   video_asset_id: string;
   /** Match event this clip is associated with (optional). */
   event_id: string | null;

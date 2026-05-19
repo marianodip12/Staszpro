@@ -19,7 +19,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useMatchStore } from '@/lib/store';
 import { usePlan, hasVideoAndAI } from '@/lib/use-plan';
 import { useAuth } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
 import { getVideoAssetForMatch, getVideoSignedUrl, deleteVideoAsset } from '@/lib/video-storage';
 import {
   createClip,
@@ -49,24 +48,8 @@ export const VideoAnalysisPage = () => {
     [completed, matchId],
   );
 
-  // The user's org id (lazy-resolved via Supabase since the store doesn't expose it directly)
-  const [orgId, setOrgId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    supabase
-      .from('org_members')
-      .select('org_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setOrgId(data?.org_id ?? null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+  // The authenticated user id is what owns the videos and clips
+  const userId = user?.id ?? null;
 
   // ── Player state ────────────────────────────────────────────────────────
   const playerRef = useRef<VideoPlayerHandle>(null);
@@ -125,13 +108,13 @@ export const VideoAnalysisPage = () => {
 
   const handleCreateClipFromEvent = useCallback(
     async (event: HandballEvent, videoSec: number) => {
-      if (!matchId || !orgId || !video) return;
+      if (!matchId || !userId || !video) return;
       try {
         const newClip = await createClip({
-          orgId,
-          matchId,
+          userId,
+          matchLocalId: matchId,
           videoAssetId: video.id,
-          eventId: null, // we don't have a UUID link to match_events from local store events
+          eventId: null,
           title: `Evento min ${event.min} — ${event.type}`,
           startSec: Math.max(0, videoSec - DEFAULT_CLIP_PRE_SEC),
           endSec: videoSec + DEFAULT_CLIP_POST_SEC,
@@ -141,16 +124,16 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysisPage] create clip failed:', err);
       }
     },
-    [matchId, orgId, video, queryClient],
+    [matchId, userId, video, queryClient],
   );
 
   const handleCreateClipHere = useCallback(async () => {
-    if (!matchId || !orgId || !video) return;
+    if (!matchId || !userId || !video) return;
     const t = playerRef.current?.getCurrentTime() ?? currentTime;
     try {
       const newClip = await createClip({
-        orgId,
-        matchId,
+        userId,
+        matchLocalId: matchId,
         videoAssetId: video.id,
         title: `Clip ${clips.length + 1}`,
         startSec: Math.max(0, t - DEFAULT_CLIP_PRE_SEC),
@@ -160,7 +143,7 @@ export const VideoAnalysisPage = () => {
     } catch (err) {
       console.error('[VideoAnalysisPage] create clip here failed:', err);
     }
-  }, [matchId, orgId, video, currentTime, clips.length, queryClient]);
+  }, [matchId, userId, video, currentTime, clips.length, queryClient]);
 
   const handlePlayClip = useCallback((clip: Clip) => {
     playerRef.current?.seek(clip.start_sec);
@@ -249,7 +232,7 @@ export const VideoAnalysisPage = () => {
     );
   }
 
-  if (videoQuery.isLoading || !orgId) {
+  if (videoQuery.isLoading || !userId) {
     return (
       <div className="container mx-auto p-4 max-w-3xl">
         <Card>
@@ -274,7 +257,7 @@ export const VideoAnalysisPage = () => {
             ← Volver
           </Button>
         </header>
-        <VideoLoader orgId={orgId} matchId={matchId} onLoaded={handleVideoLoaded} />
+        <VideoLoader userId={userId} matchLocalId={matchId} onLoaded={handleVideoLoaded} />
       </div>
     );
   }

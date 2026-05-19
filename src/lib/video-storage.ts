@@ -1,8 +1,9 @@
 /**
- * Video storage helpers.
+ * Video storage helpers — Handball-Pro flavor.
  *
- * Uploads go to the 'match-videos' bucket in Supabase Storage.
- * Path convention: `<org_id>/<match_id>/<random>-<filename>`
+ * Handball-Pro stores matches in the `partidos` table with TEXT ids (not UUIDs),
+ * and doesn't use organizations. So video_assets/clips are owned directly by
+ * the authenticated user and link to the local match id via `match_local_id`.
  */
 
 import { supabase } from './supabase';
@@ -18,8 +19,8 @@ export interface UploadProgress {
 }
 
 export interface UploadOptions {
-  orgId: string;
-  matchId: string;
+  userId: string;
+  matchLocalId: string;
   file: File;
   onProgress?: (p: UploadProgress) => void;
   signal?: AbortSignal;
@@ -32,14 +33,9 @@ export interface VideoUploadResult {
   originalName: string;
 }
 
-/**
- * Upload a video file to Supabase Storage.
- * Note: Supabase JS v2 doesn't expose progress events natively for the v2 storage
- * client, so progress is best-effort (we report 0 → 100 on completion).
- */
 export const uploadVideoFile = async ({
-  orgId,
-  matchId,
+  userId,
+  matchLocalId,
   file,
   onProgress,
   signal,
@@ -47,13 +43,12 @@ export const uploadVideoFile = async ({
   if (file.size > MAX_SIZE_BYTES) {
     throw new Error(`El archivo supera el l\u00edmite de ${(MAX_SIZE_BYTES / 1024 / 1024 / 1024).toFixed(0)}GB`);
   }
-
   if (signal?.aborted) throw new Error('Upload aborted');
 
-  // Sanitize filename and add randomness to avoid collisions
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+  const safeMatchId = matchLocalId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
   const rand = crypto.randomUUID().split('-')[0];
-  const storagePath = `${orgId}/${matchId}/${rand}-${safeName}`;
+  const storagePath = `${userId}/${safeMatchId}/${rand}-${safeName}`;
 
   onProgress?.({ loaded: 0, total: file.size, pct: 0 });
 
@@ -77,10 +72,6 @@ export const uploadVideoFile = async ({
   };
 };
 
-/**
- * Get a signed URL for playing an uploaded video.
- * Expires in 1 hour by default.
- */
 export const getVideoSignedUrl = async (storagePath: string, expiresIn = 3600): Promise<string> => {
   const { data, error } = await supabase.storage
     .from(BUCKET)
@@ -92,9 +83,6 @@ export const getVideoSignedUrl = async (storagePath: string, expiresIn = 3600): 
   return data.signedUrl;
 };
 
-/**
- * Delete a video file from storage. Best-effort — ignores errors silently.
- */
 export const deleteVideoFile = async (storagePath: string): Promise<void> => {
   try {
     await supabase.storage.from(BUCKET).remove([storagePath]);
@@ -103,11 +91,11 @@ export const deleteVideoFile = async (storagePath: string): Promise<void> => {
   }
 };
 
-// ─── Database helpers for video_assets ────────────────────────────────────────
+// ─── Database helpers ─────────────────────────────────────────────────────────
 
 export interface CreateVideoAssetInput {
-  orgId: string;
-  matchId: string;
+  userId: string;
+  matchLocalId: string;
   sourceType: VideoSourceType;
   storagePath?: string;
   youtubeUrl?: string;
@@ -120,19 +108,21 @@ export interface CreateVideoAssetInput {
 
 export const createVideoAsset = async (input: CreateVideoAssetInput): Promise<VideoAsset> => {
   const row = {
-    org_id:          input.orgId,
-    match_id:        input.matchId,
-    source_type:     input.sourceType,
-    storage_path:    input.storagePath ?? '',
-    youtube_url:     input.youtubeUrl ?? null,
+    user_id:          input.userId,
+    org_id:           null,
+    match_id:         null,
+    match_local_id:   input.matchLocalId,
+    source_type:      input.sourceType,
+    storage_path:     input.storagePath ?? '',
+    youtube_url:      input.youtubeUrl ?? null,
     youtube_video_id: input.youtubeVideoId ?? null,
-    duration:        input.duration ?? null,
-    file_size:       input.fileSize ?? null,
-    mime_type:       input.mimeType ?? null,
-    original_name:   input.originalName ?? null,
-    status:          'ready' as const,
-    bucket:          BUCKET,
-    provider:        'supabase',
+    duration:         input.duration ?? null,
+    file_size:        input.fileSize ?? null,
+    mime_type:        input.mimeType ?? null,
+    original_name:    input.originalName ?? null,
+    status:           'ready' as const,
+    bucket:           BUCKET,
+    provider:         'supabase',
   };
 
   const { data, error } = await supabase
@@ -145,11 +135,11 @@ export const createVideoAsset = async (input: CreateVideoAssetInput): Promise<Vi
   return data as VideoAsset;
 };
 
-export const getVideoAssetForMatch = async (matchId: string): Promise<VideoAsset | null> => {
+export const getVideoAssetForMatch = async (matchLocalId: string): Promise<VideoAsset | null> => {
   const { data, error } = await supabase
     .from('video_assets')
     .select('*')
-    .eq('match_id', matchId)
+    .eq('match_local_id', matchLocalId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

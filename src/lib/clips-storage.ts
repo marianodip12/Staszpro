@@ -1,13 +1,13 @@
 /**
- * Clips storage helpers — CRUD for the `clips` table.
+ * Clips CRUD — Handball-Pro flavor (user-based).
  */
 
 import { supabase } from './supabase';
 import type { Clip } from '@/domain/video';
 
 export interface CreateClipInput {
-  orgId: string;
-  matchId: string | null;
+  userId: string;
+  matchLocalId: string;
   videoAssetId: string;
   eventId?: string | null;
   title: string;
@@ -18,8 +18,10 @@ export interface CreateClipInput {
 
 export const createClip = async (input: CreateClipInput): Promise<Clip> => {
   const row = {
-    org_id:         input.orgId,
-    match_id:       input.matchId,
+    user_id:        input.userId,
+    org_id:         null,
+    match_id:       null,
+    match_local_id: input.matchLocalId,
     video_asset_id: input.videoAssetId,
     event_id:       input.eventId ?? null,
     title:          input.title,
@@ -38,11 +40,11 @@ export const createClip = async (input: CreateClipInput): Promise<Clip> => {
   return data as Clip;
 };
 
-export const listClipsForMatch = async (matchId: string): Promise<Clip[]> => {
+export const listClipsForMatch = async (matchLocalId: string): Promise<Clip[]> => {
   const { data, error } = await supabase
     .from('clips')
     .select('*')
-    .eq('match_id', matchId)
+    .eq('match_local_id', matchLocalId)
     .order('start_sec', { ascending: true });
 
   if (error) throw error;
