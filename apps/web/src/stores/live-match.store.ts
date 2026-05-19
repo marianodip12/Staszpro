@@ -18,6 +18,7 @@
  *  - Any historical data
  */
 
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
@@ -220,9 +221,14 @@ export const useLiveMatchStore = create<LiveMatchState & LiveMatchActions>()(
 // ─── Derived selectors ────────────────────────────────────────────────────────
 
 export const useAllEvents = (): HandballEvent[] => {
-  const confirmed = useLiveMatchStore((s) => s.confirmedEvents);
-  const pending   = useLiveMatchStore((s) => s.pendingEvents.map((p) => p.event));
-  return [...confirmed, ...pending].sort((a, b) => a.min - b.min || a.id.localeCompare(b.id));
+  // Use individual selectors (stable references) and memoize the combination
+  const confirmed     = useLiveMatchStore((s) => s.confirmedEvents);
+  const pendingEvents = useLiveMatchStore((s) => s.pendingEvents);
+
+  return useMemo(() => {
+    const pending = pendingEvents.map((p) => p.event);
+    return [...confirmed, ...pending].sort((a, b) => a.min - b.min || a.id.localeCompare(b.id));
+  }, [confirmed, pendingEvents]);
 };
 
 export const usePendingCount = (): number =>

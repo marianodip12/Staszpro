@@ -1,13 +1,17 @@
-import { createSupabaseServer } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Handle Supabase OAuth callback.
- * Supabase redirects here after user signs up/signs in with magic link.
- */export async function GET(request: NextRequest) {
+ * Supabase Auth Callback Route
+ * 
+ * Supabase redirects here after user signs up/in.
+ * The client-side already handles the session via Supabase auth listener.
+ * We just need to redirect to the app.
+ */
+export async function GET(request: NextRequest) {
+  // Get the origin to redirect to
   const requestUrl = new URL(request.url);
   const origin = requestUrl.origin;
-  
-  // Redirect to onboarding - Supabase client ya tiene la sesión
+
+  // Redirect to onboarding - Supabase client already has the session
   return NextResponse.redirect(`${origin}/onboarding`);
 }
