@@ -1,9 +1,9 @@
-import { createServerClient } from '@/lib/supabase';
+import { createSupabaseServer } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Handle Supabase OAuth callback.
- * Supabase redirects here after user signs up/signs in.
+ * Supabase redirects here after user signs up/signs in with magic link.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,11 +11,11 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     try {
-      const supabase = await createServerClient();
+      const supabase = await createSupabaseServer();
       await supabase.auth.exchangeCodeForSession(code);
     } catch (error) {
       console.error('[SportIQ] Auth callback error:', error);
-      // Continue anyway - they might still be logged in client-side
+      // Continue redirect even if exchange fails
     }
   }
 
