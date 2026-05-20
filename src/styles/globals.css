@@ -1,0 +1,275 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /*
+     * Handball Pro v11 — Design tokens
+     *
+     * Philosophy: OLED-friendly deep navy, high contrast for outdoor use.
+     * All colors in HSL (no alpha here — Tailwind appends it via / <alpha>).
+     */
+
+    /* Surfaces */
+    --bg: 222 47% 7%;            /* #0A0F1C — page bg */
+    --surface: 220 37% 12%;      /* #131B2E — cards */
+    --surface-2: 222 38% 18%;    /* #1C2742 — elevated */
+    --border: 223 32% 22%;       /* #273349 — subtle borders */
+
+    /* Text */
+    --fg: 210 40% 95%;           /* #F1F5F9 — primary text */
+    --muted: 217 19% 58%;        /* #7A8599 — muted bg usage */
+    --muted-fg: 215 20% 65%;     /* #94A3B8 — secondary text */
+
+    /* Brand */
+    --primary: 217 91% 60%;      /* #3B82F6 — kept from v8 */
+    --primary-fg: 210 40% 98%;
+
+    /* Semantic — handball event types */
+    --goal: 160 84% 39%;         /* #10B981 — gol */
+    --save: 213 94% 68%;         /* #60A5FA — atajada */
+    --miss: 215 20% 65%;         /* #94A3B8 — errado */
+    --danger: 0 84% 60%;         /* #EF4444 — rojo crítico / tarjeta roja */
+    --warning: 38 92% 50%;       /* #F59E0B — warning / amarilla */
+    --exclusion: 24 95% 53%;     /* #F97316 — exclusión 2min */
+    --card: 258 90% 66%;         /* #8B5CF6 — tarjetas disciplina */
+
+    /* Layout */
+    --radius: 0.75rem;
+
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+  }
+
+  /* Tabular nums on anything that should not "wobble" */
+  .tabular,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Headings */
+  h1 { @apply text-2xl font-semibold tracking-tight; }
+  h2 { @apply text-xl font-semibold tracking-tight; }
+  h3 { @apply text-lg font-medium; }
+
+  /* Scrollbar — subtle */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--surface-2));
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Touch target minimum: 44×44 CSS px for anything interactive on mobile */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Reusable data chip */
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+           text-xs font-medium border border-border bg-surface-2/60;
+  }
+}
+
+/* ─── UI PRO MAX — tema visual premium opcional ─────────────────────
+ * Se activa cuando el AppShell tiene la clase `.ui-pro-max` en su root.
+ * Filosofía:
+ *   - tipografía con tracking y peso refinados
+ *   - microanimaciones consistentes (hover lift, subtle gradients)
+ *   - más densidad de info (rounded más chico, padding más justo)
+ *   - cards con borde de gradiente sutil que reacciona al hover
+ *
+ * IMPORTANTE: todo enchufado bajo `.ui-pro-max` para que no afecte la UI
+ * default. Si querés expandir el modo, agregá reglas más abajo.
+ */
+.ui-pro-max {
+  /* Tipografía más pulida: tracking sutilmente negativo en titulares,
+     numerales tabulares siempre en stats. */
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  letter-spacing: -0.005em;
+}
+.ui-pro-max h1,
+.ui-pro-max h2 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+.ui-pro-max .tabular,
+.ui-pro-max [class*="font-mono"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aprovechar mejor espacio en tablet+: padding lateral más generoso pero
+   max-width más ancho. */
+@media (min-width: 1024px) {
+  .ui-pro-max main > div {
+    max-width: 80rem !important;
+  }
+}
+
+/* Cards: gradiente sutil en borde y lift al hover (sólo en pointer:fine,
+   no en touch porque hover en mobile es engañoso). */
+@media (hover: hover) and (pointer: fine) {
+  .ui-pro-max [class*="rounded-xl"][class*="border-border"]:not(button):not(a),
+  .ui-pro-max [class*="rounded-2xl"][class*="border-border"]:not(button):not(a) {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+  .ui-pro-max [class*="rounded-xl"][class*="border-border"]:not(button):not(a):hover,
+  .ui-pro-max [class*="rounded-2xl"][class*="border-border"]:not(button):not(a):hover {
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.08), 0 6px 24px -12px hsl(var(--primary) / 0.25);
+  }
+}
+
+/* Botones primarios: gradient sutil + brillo en hover. */
+.ui-pro-max button[class*="bg-primary"]:not([class*="bg-primary/"]) {
+  background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.85) 100%);
+  box-shadow: 0 1px 0 hsl(0 0% 100% / 0.1) inset, 0 4px 14px -4px hsl(var(--primary) / 0.4);
+}
+.ui-pro-max button[class*="bg-primary"]:not([class*="bg-primary/"]):hover {
+  filter: brightness(1.08);
+}
+
+/* Sidebar nav: indicador activo más expresivo. */
+.ui-pro-max nav a[class*="bg-primary/15"] {
+  position: relative;
+  background-image: linear-gradient(90deg, hsl(var(--primary) / 0.18), hsl(var(--primary) / 0.06));
+}
+.ui-pro-max nav a[class*="bg-primary/15"]::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: hsl(var(--primary));
+}
+
+/* Animación de entrada para secciones nuevas — más suave que default. */
+.ui-pro-max .animate-fade-in {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Scoreboard / numerales grandes: peso tipográfico extra. */
+.ui-pro-max [class*="text-3xl"][class*="font-mono"],
+.ui-pro-max [class*="text-4xl"][class*="font-mono"],
+.ui-pro-max [class*="text-5xl"][class*="font-mono"] {
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+/* ─── UI PRO MAX v2: principios "Data-Dense Dashboard" + "Real-Time Monitoring"
+ * tomados de la skill ui-ux-pro-max (categorías 1 y 4 de BI/Analytics).
+ * Aplican a esta app porque StatzPro es exactamente eso: dashboard de datos
+ * + monitoreo en vivo de partidos.
+ *
+ * Anti-patterns que evitamos a propósito:
+ *   - Gradients morado/rosa estilo AI (los reservamos para acentos, no fondos)
+ *   - Animaciones >300ms (sienten lentas para data dashboards)
+ *   - Emojis como iconos primarios (usamos Lucide donde se puede)
+ *   - Contraste <4.5:1 sobre superficies primarias
+ */
+
+/* Cursor-pointer universal en clickables (a veces se olvida). */
+.ui-pro-max button:not(:disabled),
+.ui-pro-max [role="button"]:not([aria-disabled="true"]),
+.ui-pro-max a[href] {
+  cursor: pointer;
+}
+.ui-pro-max button:disabled,
+.ui-pro-max [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Focus visible para navegación por teclado (accessibility win). */
+.ui-pro-max *:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Transitions consistentes: 150ms para UI feedback, 200-280ms para layout.
+   Esto es lo que da la sensación "pulida" sin lag perceptible. */
+.ui-pro-max button,
+.ui-pro-max a {
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Stats / numerales: full tabular-nums + tracking ajustado para alineación.
+   Esencial cuando comparás scores side-by-side. */
+.ui-pro-max .text-3xl,
+.ui-pro-max .text-4xl,
+.ui-pro-max .text-5xl {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Live indicator (status pill que muestra "EN VIVO"): pulse más sutil
+   y consistente, no agresivo como un alert. */
+.ui-pro-max .animate-pulse-live {
+  animation: hp-pro-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes hp-pro-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.9); }
+}
+
+/* Tablas/listas densas (admin, timelines): hover row más visible. */
+.ui-pro-max table tbody tr:hover,
+.ui-pro-max ul[class*="space-y"] > li:hover {
+  background-color: hsl(var(--surface-2) / 0.4);
+}
+
+/* Botones secundarios con borde definido (estilo data-dashboard,
+   no estilo marketing). */
+.ui-pro-max button[class*="bg-surface-2"],
+.ui-pro-max button[class*="variant-secondary"] {
+  border: 1px solid hsl(var(--border));
+  background-image: linear-gradient(180deg, hsl(var(--surface-2)) 0%, hsl(var(--surface-2) / 0.7) 100%);
+}
+
+/* Skip the "AI purple/pink" anti-pattern: si alguien usó gradients morado/rosa,
+   los reemplazamos por el primary del sistema (azul handball). Esto sólo
+   afecta clases tipo from-purple-* / from-pink-* que la app no debería usar
+   en data — si vemos alguna, el modo la "corrige" automáticamente. */
+.ui-pro-max [class*="from-purple-"],
+.ui-pro-max [class*="from-pink-"],
+.ui-pro-max [class*="to-purple-"],
+.ui-pro-max [class*="to-pink-"] {
+  background-image: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--primary) / 0.5)) !important;
+}
