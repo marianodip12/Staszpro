@@ -1,38 +1,51 @@
 /**
- * VideoAnalysisPage — Main page for analyzing a match with video.
+ * VideoAnalysisPage — The full video analyzer.
  *
- * Layout:
- *   ┌──────────────────────────────┬─────────────────────┐
- *   │  Video player                │  Events (rail)      │
- *   │                              │                     │
- *   │  Controls (Create clip here) │                     │
- *   ├──────────────────────────────┴─────────────────────┤
- *   │  Clips list (created clips, click to play, edit)   │
- *   └────────────────────────────────────────────────────┘
+ * Ported from the original Handball-analizador, integrated into StatzPro.
+ *  - Plan-gated: only club / elite.
+ *  - Video source: local file (IndexedDB-persisted) or YouTube.
+ *  - Events: hierarchical 4-level model, persisted in Supabase `video_events`.
+ *  - Players: free-form roster persisted in `video_players`.
+ *  - Clip editor + drawing editor (export with MediaRecorder).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Activity, ArrowLeft, Pencil } from 'lucide-react';
 import { useMatchStore } from '@/lib/store';
 import { usePlan, hasVideoAndAI } from '@/lib/use-plan';
 import { useAuth } from '@/lib/auth';
-import { getVideoAssetForMatch, getVideoSignedUrl, deleteVideoAsset } from '@/lib/video-storage';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  createClip,
-  listClipsForMatch,
-  updateClip as updateClipDb,
-  deleteClip as deleteClipDb,
-} from '@/lib/clips-storage';
-import { DEFAULT_CLIP_PRE_SEC, DEFAULT_CLIP_POST_SEC } from '@/domain/video';
-import type { Clip, VideoAsset } from '@/domain/video';
-import type { HandballEvent } from '@/domain/types';
-import { VideoLoader } from './video-loader';
-import { VideoPlayer, type VideoPlayerHandle } from './video-player';
-import { EventRail } from './event-rail';
-import { ClipList } from './clip-list';
+  listVideoEvents,
+  createVideoEvent,
+  deleteVideoEvent,
+  updateVideoEvent,
+  listVideoPlayers,
+  createVideoPlayer,
+  deleteVideoPlayer,
+} from '@/lib/video-events-storage';
+import { DEFAULT_CLIP_PRE_SEC, DEFAULT_CLIP_POST_SEC } from '@/domain/video-events';
+import type {
+  VideoEvent,
+  VideoPlayer,
+  VideoMode,
+  EventTipo,
+  EventSubtype,
+  EventDetail,
+  EventQualifier,
+  EventResult,
+} from '@/domain/video-events';
+import { inferResult } from '@/domain/video-events';
+import { AnalyzerVideoPlayer } from './AnalyzerVideoPlayer';
+import type { VideoPlayerHandle } from './AnalyzerVideoPlayer';
+import { EventButtons } from './EventButtons';
+import { EventList } from './EventList';
+import { PlayerPanel } from './PlayerPanel';
+import { ClipEditor } from './ClipEditor';
+import { ClipDrawingEditor } from './ClipDrawingEditor';
 
 export const VideoAnalysisPage = () => {
   const { id: matchId } = useParams<{ id: string }>();
@@ -42,153 +55,165 @@ export const VideoAnalysisPage = () => {
   const completed = useMatchStore((s) => s.completed);
   const queryClient = useQueryClient();
 
-  // Match from local store
-  const match = useMemo(
-    () => completed.find((m) => m.id === matchId) ?? null,
-    [completed, matchId],
-  );
-
-  // The authenticated user id is what owns the videos and clips
   const userId = user?.id ?? null;
+  const match = completed.find((m) => m.id === matchId) ?? null;
 
-  // ── Player state ────────────────────────────────────────────────────────
-  const playerRef = useRef<VideoPlayerHandle>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  // ── Player + UI refs/state ──────────────────────────────────────────────
+  const videoRef = useRef<VideoPlayerHandle>(null);
+  const [videoMode, setVideoMode] = useState<VideoMode>(null);
+  const [showDrawEditor, setShowDrawEditor] = useState(false);
+  const [editClipRange, setEditClipRange] = useState<{ start: number; end: number } | null>(null);
 
   // ── Queries ─────────────────────────────────────────────────────────────
-  const videoQuery = useQuery({
-    queryKey: ['video-asset', matchId],
-    queryFn: () => getVideoAssetForMatch(matchId!),
+  const eventsQuery = useQuery({
+    queryKey: ['video-events', matchId],
+    queryFn: () => listVideoEvents(matchId!),
     enabled: !!matchId,
   });
 
-  const clipsQuery = useQuery({
-    queryKey: ['clips', matchId],
-    queryFn: () => listClipsForMatch(matchId!),
+  const playersQuery = useQuery({
+    queryKey: ['video-players', matchId],
+    queryFn: () => listVideoPlayers(matchId!),
     enabled: !!matchId,
   });
 
-  const video = videoQuery.data ?? null;
-  const clips = clipsQuery.data ?? [];
+  const events: VideoEvent[] = eventsQuery.data ?? [];
+  const players: VideoPlayer[] = playersQuery.data ?? [];
 
-  // Resolve signed URL for uploaded videos
-  useEffect(() => {
-    if (!video || video.source_type !== 'upload' || !video.storage_path) {
-      setSignedUrl(null);
-      return;
-    }
-    let cancelled = false;
-    getVideoSignedUrl(video.storage_path)
-      .then((url) => {
-        if (!cancelled) setSignedUrl(url);
-      })
-      .catch((err) => {
-        console.error('[VideoAnalysisPage] signed url failed:', err);
-        if (!cancelled) setSignedUrl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [video]);
-
-  // ── Actions ─────────────────────────────────────────────────────────────
-  const handleVideoLoaded = useCallback(
-    (asset: VideoAsset) => {
-      queryClient.setQueryData(['video-asset', matchId], asset);
-    },
-    [queryClient, matchId],
-  );
-
-  const handleEventClick = useCallback((_event: HandballEvent, videoSec: number) => {
-    playerRef.current?.seek(videoSec);
-    playerRef.current?.play();
-  }, []);
-
-  const handleCreateClipFromEvent = useCallback(
-    async (event: HandballEvent, videoSec: number) => {
-      if (!matchId || !userId || !video) return;
+  // ── Event handlers ──────────────────────────────────────────────────────
+  const handleEvent = useCallback(
+    async (
+      tipo: EventTipo,
+      subtype: EventSubtype,
+      detail: EventDetail,
+      qualifier: EventQualifier,
+      _result: EventResult,
+      playerId: string | null,
+      playerName: string | null,
+    ) => {
+      if (!matchId || !userId) return;
+      const time = videoRef.current?.getCurrentTime() ?? 0;
+      const result = inferResult({ tipo, subtype, detail, qualifier });
       try {
-        const newClip = await createClip({
+        const created = await createVideoEvent({
           userId,
           matchLocalId: matchId,
-          videoAssetId: video.id,
-          eventId: null,
-          title: `Evento min ${event.min} — ${event.type}`,
-          startSec: Math.max(0, videoSec - DEFAULT_CLIP_PRE_SEC),
-          endSec: videoSec + DEFAULT_CLIP_POST_SEC,
+          videoAssetId: null,
+          time,
+          tipo,
+          subtype,
+          detail,
+          qualifier,
+          result,
+          playerId,
+          playerName,
+          clipStart: Math.max(0, time - DEFAULT_CLIP_PRE_SEC),
+          clipEnd: time + DEFAULT_CLIP_POST_SEC,
         });
-        queryClient.setQueryData<Clip[]>(['clips', matchId], (old) => [...(old ?? []), newClip]);
+        queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
+          [...(old ?? []), created].sort((a, b) => a.time - b.time),
+        );
       } catch (err) {
-        console.error('[VideoAnalysisPage] create clip failed:', err);
+        console.error('[VideoAnalysis] create event failed:', err);
       }
     },
-    [matchId, userId, video, queryClient],
+    [matchId, userId, queryClient],
   );
 
-  const handleCreateClipHere = useCallback(async () => {
-    if (!matchId || !userId || !video) return;
-    const t = playerRef.current?.getCurrentTime() ?? currentTime;
-    try {
-      const newClip = await createClip({
-        userId,
-        matchLocalId: matchId,
-        videoAssetId: video.id,
-        title: `Clip ${clips.length + 1}`,
-        startSec: Math.max(0, t - DEFAULT_CLIP_PRE_SEC),
-        endSec: t + DEFAULT_CLIP_POST_SEC,
-      });
-      queryClient.setQueryData<Clip[]>(['clips', matchId], (old) => [...(old ?? []), newClip]);
-    } catch (err) {
-      console.error('[VideoAnalysisPage] create clip here failed:', err);
-    }
-  }, [matchId, userId, video, currentTime, clips.length, queryClient]);
-
-  const handlePlayClip = useCallback((clip: Clip) => {
-    playerRef.current?.seek(clip.start_sec);
-    playerRef.current?.play();
+  const handleSeek = useCallback((time: number) => {
+    videoRef.current?.seekTo(time);
   }, []);
 
-  const handleRenameClip = useCallback(
-    async (clip: Clip, newTitle: string) => {
+  const handleDeleteEvent = useCallback(
+    async (id: string) => {
       try {
-        const updated = await updateClipDb(clip.id, { title: newTitle });
-        queryClient.setQueryData<Clip[]>(['clips', matchId], (old) =>
-          (old ?? []).map((c) => (c.id === updated.id ? updated : c)),
+        await deleteVideoEvent(id);
+        queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
+          (old ?? []).filter((e) => e.id !== id),
         );
       } catch (err) {
-        console.error('[VideoAnalysisPage] rename clip failed:', err);
+        console.error('[VideoAnalysis] delete event failed:', err);
       }
     },
     [matchId, queryClient],
   );
 
-  const handleDeleteClip = useCallback(
-    async (clip: Clip) => {
-      if (!confirm(`¿Eliminar el clip "${clip.title}"?`)) return;
+  const handleUpdateResult = useCallback(
+    async (id: string, result: EventResult) => {
       try {
-        await deleteClipDb(clip.id);
-        queryClient.setQueryData<Clip[]>(['clips', matchId], (old) =>
-          (old ?? []).filter((c) => c.id !== clip.id),
+        const updated = await updateVideoEvent(id, { result });
+        queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
+          (old ?? []).map((e) => (e.id === updated.id ? updated : e)),
         );
       } catch (err) {
-        console.error('[VideoAnalysisPage] delete clip failed:', err);
+        console.error('[VideoAnalysis] update result failed:', err);
       }
     },
     [matchId, queryClient],
   );
 
-  const handleReplaceVideo = useCallback(async () => {
-    if (!video) return;
-    if (!confirm('¿Eliminar el video actual y cargar otro?')) return;
+  const handleClearAll = useCallback(async () => {
     try {
-      await deleteVideoAsset(video.id, video.storage_path);
-      queryClient.setQueryData(['video-asset', matchId], null);
+      await Promise.all(events.map((e) => deleteVideoEvent(e.id)));
+      queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], []);
     } catch (err) {
-      console.error('[VideoAnalysisPage] replace video failed:', err);
+      console.error('[VideoAnalysis] clear all failed:', err);
     }
-  }, [video, matchId, queryClient]);
+  }, [events, matchId, queryClient]);
+
+  const handleUpdateClip = useCallback(
+    async (eventId: string, clip_start: number, clip_end: number) => {
+      try {
+        const updated = await updateVideoEvent(eventId, { clip_start, clip_end });
+        queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
+          (old ?? []).map((e) => (e.id === updated.id ? updated : e)),
+        );
+      } catch (err) {
+        console.error('[VideoAnalysis] update clip failed:', err);
+      }
+    },
+    [matchId, queryClient],
+  );
+
+  const handleAddPlayer = useCallback(
+    async (name: string, number?: string) => {
+      if (!matchId || !userId) return;
+      try {
+        const created = await createVideoPlayer({
+          userId,
+          matchLocalId: matchId,
+          name,
+          number: number ?? null,
+        });
+        queryClient.setQueryData<VideoPlayer[]>(['video-players', matchId], (old) => [
+          ...(old ?? []),
+          created,
+        ]);
+      } catch (err) {
+        console.error('[VideoAnalysis] add player failed:', err);
+      }
+    },
+    [matchId, userId, queryClient],
+  );
+
+  const handleRemovePlayer = useCallback(
+    async (id: string) => {
+      try {
+        await deleteVideoPlayer(id);
+        queryClient.setQueryData<VideoPlayer[]>(['video-players', matchId], (old) =>
+          (old ?? []).filter((p) => p.id !== id),
+        );
+      } catch (err) {
+        console.error('[VideoAnalysis] remove player failed:', err);
+      }
+    },
+    [matchId, queryClient],
+  );
+
+  const openClipEditor = useCallback((start: number, end: number) => {
+    setEditClipRange({ start, end });
+    setShowDrawEditor(true);
+  }, []);
 
   // ── Plan gate ───────────────────────────────────────────────────────────
   if (!plan.loading && !hasVideoAndAI(plan)) {
@@ -196,31 +221,29 @@ export const VideoAnalysisPage = () => {
       <div className="container mx-auto p-4 max-w-3xl">
         <Card>
           <CardContent className="p-8 text-center space-y-4">
-            <div className="mx-auto w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center text-primary">
-              <LockIcon />
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center text-primary text-2xl">
+              🎬
             </div>
             <div>
               <h2 className="text-lg font-semibold mb-1">Análisis con video</h2>
               <p className="text-sm text-muted-fg">
-                Disponible en los planes <strong>Club</strong> y <strong>Elite</strong>. Subí el video del partido, clickeá los eventos para saltar al momento exacto, y exportá los clips destacados.
+                Disponible en los planes <strong>Club</strong> y <strong>Elite</strong>.
               </p>
             </div>
-            <Button onClick={() => navigate('/app/plans')}>
-              Ver planes
-            </Button>
+            <Button onClick={() => navigate('/app/plans')}>Ver planes</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // ── Loading / empty states ──────────────────────────────────────────────
+  // ── Loading / not found ─────────────────────────────────────────────────
   if (!matchId || !match) {
     return (
       <div className="container mx-auto p-4 max-w-3xl">
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-fg">
-            No encontramos el partido. Volvé a la lista de partidos.
+            No encontramos el partido.
             <div className="mt-3">
               <Button variant="secondary" onClick={() => navigate('/app')}>
                 Volver
@@ -232,135 +255,149 @@ export const VideoAnalysisPage = () => {
     );
   }
 
-  if (videoQuery.isLoading || !userId) {
-    return (
-      <div className="container mx-auto p-4 max-w-3xl">
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-muted-fg">
-            Cargando…
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // No video yet → show loader
-  if (!video) {
-    return (
-      <div className="container mx-auto p-4 max-w-3xl space-y-4">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">{match.home} vs {match.away}</h1>
-            <p className="text-xs text-muted-fg">Análisis con video</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/app')}>
-            ← Volver
-          </Button>
-        </header>
-        <VideoLoader userId={userId} matchLocalId={matchId} onLoaded={handleVideoLoaded} />
-      </div>
-    );
-  }
-
-  // ── Main UI ─────────────────────────────────────────────────────────────
+  // ── Main UI (analyzer layout) ───────────────────────────────────────────
   return (
-    <div className="container mx-auto p-4 space-y-4">
-      <header className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-lg font-semibold">{match.home} vs {match.away}</h1>
-          <p className="text-xs text-muted-fg">
-            Análisis con video · {match.hs}-{match.as} · {clips.length} clip{clips.length === 1 ? '' : 's'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleReplaceVideo}>
-            Reemplazar video
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate('/app')}>
-            ← Volver
-          </Button>
+    <div className="min-h-screen bg-[#080b0f]">
+      {/* Header */}
+      <header className="border-b border-[#21262d] bg-[#0d1117]/90 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+          <button
+            onClick={() => navigate('/app')}
+            className="flex items-center gap-2 text-[#484f58] hover:text-white transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="font-mono text-xs hidden sm:block">PARTIDOS</span>
+          </button>
+          <div className="w-px h-5 bg-[#30363d]" />
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Activity className="w-4 h-4 text-[#00ff88] shrink-0" />
+            <span className="font-bold text-white tracking-wide truncate text-sm">
+              {match.home} vs {match.away}
+            </span>
+            <span className="text-[#484f58] font-mono text-xs hidden md:block shrink-0">
+              Análisis con video
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {videoMode === 'local' && (
+              <button
+                onClick={() => {
+                  setEditClipRange(null);
+                  setShowDrawEditor(true);
+                }}
+                className="flex items-center gap-1.5 text-xs font-mono text-violet-400 hover:text-violet-300 border border-violet-500/30 hover:border-violet-500/50 px-3 py-1.5 rounded-lg bg-violet-500/10 transition-all"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span className="hidden sm:block">EDITOR</span>
+              </button>
+            )}
+            <div className="px-3 py-1.5 bg-[#161b22] border border-[#30363d] rounded-lg font-black text-[#00ff88] text-sm tabular-nums">
+              {match.hs} : {match.as}
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-        {/* LEFT: Video + controls */}
-        <div className="space-y-3">
-          <VideoPlayer
-            ref={playerRef}
-            asset={video}
-            signedUrl={signedUrl}
-            onTimeUpdate={setCurrentTime}
-            onDurationKnown={setDuration}
+      <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
+        {/* Left column */}
+        <div className="contents xl:flex xl:flex-col xl:gap-4 xl:min-w-0">
+          {/* Video */}
+          <section className="rounded-none sm:rounded-2xl bg-[#0d1117] border-y sm:border border-[#21262d] p-2 sm:p-4 sticky top-[56px] xl:top-[70px] z-30 shadow-2xl -mx-4 sm:mx-0 self-start xl:self-stretch">
+            <AnalyzerVideoPlayer ref={videoRef} onModeChange={setVideoMode} partidoId={matchId} />
+            {videoMode === 'local' && (
+              <button
+                onClick={() => {
+                  setEditClipRange(null);
+                  setShowDrawEditor(true);
+                }}
+                className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 px-3 py-2 rounded-full bg-violet-500/90 hover:bg-violet-500 backdrop-blur text-white text-xs font-bold shadow-lg shadow-violet-500/40 transition-all"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar video
+              </button>
+            )}
+          </section>
+
+          {/* Players */}
+          <PlayerPanel players={players} onAdd={handleAddPlayer} onRemove={handleRemovePlayer} />
+
+          {/* Event buttons */}
+          <section className="rounded-2xl bg-[#0d1117] border border-[#21262d] p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-amber-400 text-sm">⚡</span>
+              <span className="font-semibold tracking-widest text-xs text-[#484f58] uppercase">
+                Marcar Evento
+              </span>
+              {!videoMode && (
+                <span className="text-xs font-mono text-[#484f58] ml-auto">
+                  Cargá un video primero
+                </span>
+              )}
+            </div>
+            <EventButtons players={players} onEvent={handleEvent} disabled={!videoMode} />
+          </section>
+
+          {/* Clip editor */}
+          <ClipEditor
+            events={events}
+            playerRef={videoRef}
+            onUpdateClip={handleUpdateClip}
+            onEditClip={videoMode === 'local' ? openClipEditor : undefined}
           />
 
-          <Card>
-            <CardContent className="p-3 flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-xs text-muted-fg font-mono tabular-nums">
-                {fmtTime(currentTime)} / {fmtTime(duration)}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={() => playerRef.current?.seek(Math.max(0, currentTime - 10))}>
-                  −10s
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => playerRef.current?.seek(currentTime + 10)}>
-                  +10s
-                </Button>
-                <Button onClick={handleCreateClipHere} size="sm">
-                  + Crear clip aquí
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-fg mb-2">
-                Clips ({clips.length})
-              </div>
-              <ClipList
-                clips={clips}
-                currentTime={currentTime}
-                onPlayClip={handlePlayClip}
-                onRenameClip={handleRenameClip}
-                onDeleteClip={handleDeleteClip}
-              />
-            </CardContent>
-          </Card>
+          {/* Event list — mobile */}
+          <section className="rounded-2xl bg-[#0d1117] border border-[#21262d] p-4 xl:hidden">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="font-semibold tracking-widest text-xs text-[#484f58] uppercase">
+                Timeline
+              </span>
+            </div>
+            <EventList
+              events={events}
+              players={players}
+              onSeek={handleSeek}
+              onDelete={handleDeleteEvent}
+              onUpdateResult={handleUpdateResult}
+              onClearAll={handleClearAll}
+            />
+          </section>
         </div>
 
-        {/* RIGHT: Events rail */}
-        <div className="space-y-2">
-          <Card>
-            <CardContent className="p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-fg mb-2">
-                Eventos del partido ({match.events.length})
-              </div>
-              <EventRail
-                events={match.events}
-                homeTeamName={match.home}
-                awayTeamName={match.away}
-                currentTime={currentTime}
-                onEventClick={handleEventClick}
-                onCreateClip={handleCreateClipFromEvent}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        {/* Right column — desktop */}
+        <aside className="hidden xl:flex flex-col gap-4">
+          <section className="rounded-2xl bg-[#0d1117] border border-[#21262d] p-4 flex-1 flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="font-semibold tracking-widest text-xs text-[#484f58] uppercase">
+                Timeline de Eventos
+              </span>
+            </div>
+            <EventList
+              events={events}
+              players={players}
+              onSeek={handleSeek}
+              onDelete={handleDeleteEvent}
+              onUpdateResult={handleUpdateResult}
+              onClearAll={handleClearAll}
+            />
+          </section>
+        </aside>
+      </main>
+
+      {/* Drawing / Clip Editor overlay */}
+      {showDrawEditor && (
+        <ClipDrawingEditor
+          localFile={videoRef.current?.getLocalFile() ?? null}
+          initialTime={editClipRange?.start ?? videoRef.current?.getCurrentTime() ?? 0}
+          clipRange={editClipRange}
+          events={events}
+          onClose={() => {
+            setShowDrawEditor(false);
+            setEditClipRange(null);
+          }}
+        />
+      )}
     </div>
   );
 };
-
-const fmtTime = (sec: number): string => {
-  const s = Math.max(0, Math.floor(sec));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
-};
-
-const LockIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
