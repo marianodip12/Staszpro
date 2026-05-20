@@ -328,10 +328,37 @@ export const EventButtons = ({ players, onEvent, disabled = false }: EventButton
                   </div>
                 </>
               ) : (
-                <button type="button" onClick={() => handleFire(null, null)}
-                  className="w-full py-3 bg-cyan-500/15 border border-cyan-500/40 hover:bg-cyan-500/25 rounded-lg text-cyan-400 font-bold tracking-widest text-sm transition-all active:scale-95">
-                  REGISTRAR EVENTO
-                </button>
+                <>
+                  <input
+                    type="text"
+                    placeholder="Nombre del jugador (opcional)"
+                    value={playerSearch}
+                    onChange={(e) => setPlayerSearch(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const name = playerSearch.trim();
+                        handleFire(null, name || null);
+                      }
+                    }}
+                    className="w-full bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 text-white placeholder-[#484f58] font-mono text-sm focus:outline-none focus:border-cyan-500/50 mb-3"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = playerSearch.trim();
+                        handleFire(null, name || null);
+                      }}
+                      className="flex-1 py-2.5 bg-cyan-500/15 border border-cyan-500/40 hover:bg-cyan-500/25 rounded-lg text-cyan-400 font-bold tracking-widest text-sm transition-all active:scale-95"
+                    >
+                      {playerSearch.trim() ? 'REGISTRAR CON JUGADOR' : 'REGISTRAR EVENTO'}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-[#484f58] font-mono mt-2 text-center">
+                    Tip: cargá jugadores en el panel para reutilizarlos
+                  </p>
+                </>
               )}
             </div>
           </div>

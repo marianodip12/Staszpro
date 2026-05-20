@@ -397,22 +397,16 @@ export function ClipEditor({ events, playerRef, onUpdateClip, onEditClip, open: 
     const clipsToExport = buildClipsToExport();
     const localFile = resolveFile(0);
 
-    // No local file → export JSON
+    // No local file → can't cut video. Tell the user clearly.
     if (!localFile) {
-      const exportData = {
-        exported_at: new Date().toISOString(),
-        total_clips: clipsToExport.length,
-        clips: clipsToExport.map(c => ({
-          id: c.id, tipo: c.tipo, subtype: c.subtype ?? null,
-          result: c.result ?? null, player_name: c.player_name ?? null,
-          timestamp: c.time, clip_start: c.clip_start, clip_end: c.clip_end,
-          duration_seconds: Math.max(0, c.clip_end - c.clip_start), label: getEventLabel(c),
-        })),
-      };
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob); const a = document.createElement("a");
-      a.href = url; a.download = `clips_${new Date().toISOString().slice(0,10)}.json`; a.click();
-      URL.revokeObjectURL(url);
+      setExportError(
+        'Para exportar clips de video necesitás haber cargado el video como archivo local (no YouTube). Volvé a la pantalla del video y subí el archivo desde tu computadora.',
+      );
+      setExportStatus('error');
+      setTimeout(() => {
+        setExportStatus('idle');
+        setExportError(null);
+      }, 8000);
       return;
     }
 
@@ -814,7 +808,7 @@ export function ClipEditor({ events, playerRef, onUpdateClip, onEditClip, open: 
 
             {/* Action buttons on right */}
             <div className="flex items-center gap-2">
-              {hasLocalFile && selected.size >= 1 && (
+              {hasLocalFile && selected.size >= 1 ? (
                 <button
                   onClick={() => setShowTimeline(true)}
                   disabled={isBusy}
@@ -822,6 +816,15 @@ export function ClipEditor({ events, playerRef, onUpdateClip, onEditClip, open: 
                   <Layers className="w-4 h-4" />
                   Editar timeline
                 </button>
+              ) : (
+                <span
+                  className="px-3 py-2 rounded-lg bg-[#161b22] border border-[#30363d] text-[#484f58] text-[10px] font-mono"
+                  title={!hasLocalFile
+                    ? 'Subí el video como archivo local para usar el editor de timeline'
+                    : 'Seleccioná al menos 1 clip'}
+                >
+                  {!hasLocalFile ? '🎬 Editor timeline: cargá video local' : '🎬 Seleccioná clips'}
+                </span>
               )}
 
               <button

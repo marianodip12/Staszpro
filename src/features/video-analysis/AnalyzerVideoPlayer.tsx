@@ -180,15 +180,42 @@ export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProp
     <div className="flex flex-col gap-3">
       {/* Source picker */}
       {screen==="pick" && (
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={()=>fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-6 rounded-xl border border-[#30363d] bg-[#161b22] hover:border-[#00ff88]/50 hover:bg-[#00ff88]/5 transition-all group">
-            <div className="w-12 h-12 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center group-hover:bg-[#00ff88]/20 transition-colors"><Upload className="w-5 h-5 text-[#00ff88]" /></div>
-            <div className="text-center"><p className="font-display font-semibold text-white tracking-wide text-sm">VIDEO LOCAL</p><p className="text-xs text-[#484f58] mt-1 font-mono">MP4 · MOV · WebM</p></div>
-          </button>
-          <button onClick={()=>setScreen("yt-input")} className="flex flex-col items-center gap-3 p-6 rounded-xl border border-[#30363d] bg-[#161b22] hover:border-red-500/50 hover:bg-red-500/5 transition-all group">
-            <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center group-hover:bg-red-500/20 transition-colors"><Youtube className="w-5 h-5 text-red-400" /></div>
-            <div className="text-center"><p className="font-display font-semibold text-white tracking-wide text-sm">YOUTUBE</p><p className="text-xs text-[#484f58] mt-1 font-mono">Pegá el link</p></div>
-          </button>
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-mono text-[#484f58] text-center uppercase tracking-widest">
+            ¿Cómo querés cargar el video?
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onClick={()=>fileInputRef.current?.click()} className="flex flex-col items-center gap-3 p-5 rounded-xl border border-[#30363d] bg-[#161b22] hover:border-[#00ff88]/50 hover:bg-[#00ff88]/5 transition-all group">
+              <div className="w-12 h-12 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center group-hover:bg-[#00ff88]/20 transition-colors"><Upload className="w-5 h-5 text-[#00ff88]" /></div>
+              <div className="text-center">
+                <p className="font-semibold text-white tracking-wide text-sm">VIDEO LOCAL</p>
+                <p className="text-xs text-[#484f58] mt-1 font-mono">MP4 · MOV · WebM</p>
+              </div>
+              <div className="text-[10px] text-[#00ff88]/80 font-mono leading-relaxed text-center border-t border-[#30363d] pt-2 w-full">
+                ✓ Marcar eventos<br/>
+                ✓ Recortar clips<br/>
+                ✓ Editor timeline (CapCut)<br/>
+                ✓ Dibujar sobre el video<br/>
+                ✓ Exportar MP4
+              </div>
+            </button>
+            <button onClick={()=>setScreen("yt-input")} className="flex flex-col items-center gap-3 p-5 rounded-xl border border-[#30363d] bg-[#161b22] hover:border-red-500/50 hover:bg-red-500/5 transition-all group">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center group-hover:bg-red-500/20 transition-colors"><Youtube className="w-5 h-5 text-red-400" /></div>
+              <div className="text-center">
+                <p className="font-semibold text-white tracking-wide text-sm">YOUTUBE</p>
+                <p className="text-xs text-[#484f58] mt-1 font-mono">Pegá el link</p>
+              </div>
+              <div className="text-[10px] text-[#8b949e] font-mono leading-relaxed text-center border-t border-[#30363d] pt-2 w-full">
+                ✓ Marcar eventos<br/>
+                ✓ Saltar a momentos<br/>
+                <span className="text-[#484f58]">✗ No permite recortar</span><br/>
+                <span className="text-[#484f58]">✗ No exporta clips</span>
+              </div>
+            </button>
+          </div>
+          <p className="text-[10px] text-[#484f58] font-mono text-center">
+            Para editar y exportar clips, usá <span className="text-[#00ff88]">Video Local</span>.
+          </p>
         </div>
       )}
 
