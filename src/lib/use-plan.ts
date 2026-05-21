@@ -48,13 +48,55 @@ const resolve = (p: PlanOrInfo): { plan: Plan; betaActive: boolean } => {
   return { plan: p.plan, betaActive: p.betaActive === true };
 };
 
+// ─── Admin plan preview override ─────────────────────────────────────────────
+// Lets an admin preview the app as Free/Pro/Club/Elite without changing their
+// real plan. Stored in localStorage so it persists across page navigations.
+// When a preview is active, the beta unlock is also disabled so the admin sees
+// exactly what that plan tier really gets.
+
+const PREVIEW_KEY = 'statzpro_admin_plan_preview';
+
+export type PlanPreview = Plan | null;
+
+export const getPlanPreview = (): PlanPreview => {
+  try {
+    const v = localStorage.getItem(PREVIEW_KEY);
+    if (v === 'free' || v === 'pro' || v === 'club' || v === 'elite') return v;
+  } catch { /* ignore */ }
+  return null;
+};
+
+export const setPlanPreview = (p: PlanPreview): void => {
+  try {
+    if (p === null) localStorage.removeItem(PREVIEW_KEY);
+    else localStorage.setItem(PREVIEW_KEY, p);
+    // Notify listeners in the same tab
+    window.dispatchEvent(new Event('statzpro-plan-preview-change'));
+  } catch { /* ignore */ }
+};
+
 export const usePlan = (): PlanInfo & { refresh: () => Promise<void> } => {
   const { user } = useAuth();
   const [info, setInfo] = useState<Omit<PlanInfo, 'betaActive' | 'betaUntil'>>(DEFAULT_PLAN_INFO);
+  const [preview, setPreview] = useState<PlanPreview>(() => getPlanPreview());
 
-  // Recalculamos `betaActive` en cada render, así si la página queda abierta
-  // pasando la medianoche del último día, el estado se ajusta solo.
-  const betaActive = useMemo(() => Date.now() < BETA_UNTIL.getTime(), []);
+  // Listen for preview changes (from the admin selector)
+  useEffect(() => {
+    const handler = () => setPreview(getPlanPreview());
+    window.addEventListener('statzpro-plan-preview-change', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('statzpro-plan-preview-change', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
+
+  // Beta is active normally — but DISABLED while previewing a plan, so the
+  // admin sees the real gating of that tier.
+  const betaActive = useMemo(
+    () => preview === null && Date.now() < BETA_UNTIL.getTime(),
+    [preview],
+  );
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -82,7 +124,21 @@ export const usePlan = (): PlanInfo & { refresh: () => Promise<void> } => {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { ...info, betaActive, betaUntil: BETA_UNTIL, refresh };
+  // If a preview is active, override the plan the rest of the app sees.
+  // isAdmin stays true so the admin can still turn the preview off.
+  const effectivePlan: Plan = preview ?? info.plan;
+  const effectiveLimit = preview
+    ? (preview === 'club' || preview === 'elite' ? -1 : preview === 'pro' ? 50 : 10)
+    : info.matchLimit;
+
+  return {
+    ...info,
+    plan: effectivePlan,
+    matchLimit: effectiveLimit,
+    betaActive,
+    betaUntil: BETA_UNTIL,
+    refresh,
+  };
 };
 
 // Helper: ¿este plan (o este {plan, betaActive}) tiene acceso al Modo Completo?

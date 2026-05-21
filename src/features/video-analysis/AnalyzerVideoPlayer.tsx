@@ -2,9 +2,15 @@ import React, {
   useRef, useState, useEffect, useCallback,
   forwardRef, useImperativeHandle,
 } from "react";
-import { Upload, Youtube, Clock, Plus, Film, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Youtube, Clock, Plus, Film, X, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import type { VideoMode } from "@/domain/video-events";
 import { saveVideoFile, loadVideoFile } from "@/lib/videoDB";
+import {
+  getAnalyzerVideo,
+  saveYouTubeVideo,
+  uploadLocalVideo,
+  getPublicVideoUrl,
+} from "@/lib/analyzer-video-storage";
 
 export interface VideoPlayerHandle {
   getCurrentTime: () => number;
@@ -21,6 +27,10 @@ interface VideoFile { file: File; url: string; }
 interface VideoPlayerProps {
   onModeChange?: (mode: VideoMode) => void;
   partidoId?: string;
+  /** Authenticated user id — required to persist video to Supabase. */
+  userId?: string | null;
+  /** When true, the player is read-only (shared public link). */
+  readOnly?: boolean;
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -55,7 +65,7 @@ function loadYouTubeAPI(): Promise<void> {
   });
 }
 
-export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ onModeChange, partidoId }, ref) => {
+export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(({ onModeChange, partidoId, userId, readOnly }, ref) => {
   const [mode, setMode] = useState<VideoMode>(null);
   const [screen, setScreen] = useState<"pick"|"yt-input"|"playing">("pick");
   const [files, setFiles] = useState<VideoFile[]>([]);
@@ -66,6 +76,8 @@ export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProp
   const [ytError, setYtError] = useState("");
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number|null>(null);
+  const [restoring, setRestoring] = useState(true);
 
   const videoRef    = useRef<HTMLVideoElement>(null);
   const ytPlayerRef = useRef<YTPlayer|null>(null);
@@ -82,14 +94,73 @@ export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProp
   filesRef.current = files;
   useEffect(() => () => { filesRef.current.forEach(f => URL.revokeObjectURL(f.url)); }, []);
 
-  // Auto-restore from IndexedDB
+  // Auto-restore: Supabase DB first (YouTube id or uploaded file), then IndexedDB.
   useEffect(() => {
-    if (!partidoId) return;
-    loadVideoFile(partidoId).then(file => {
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      setFiles([{file, url}]); setActiveIdx(0); setMode("local"); setScreen("playing"); onModeChange?.("local");
-    }).catch(()=>{});
+    if (!partidoId) { setRestoring(false); return; }
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const asset = await getAnalyzerVideo(partidoId);
+        if (cancelled) return;
+
+        if (asset?.source_type === 'youtube' && asset.youtube_video_id) {
+          setYtId(asset.youtube_video_id);
+          setMode('youtube');
+          setScreen('playing');
+          onModeChange?.('youtube');
+          setRestoring(false);
+          return;
+        }
+
+        if (asset?.source_type === 'upload' && asset.storage_path) {
+          // Try IndexedDB first (fast, local), fall back to public URL.
+          const localFile = await loadVideoFile(partidoId).catch(() => null);
+          if (cancelled) return;
+          if (localFile) {
+            const url = URL.createObjectURL(localFile);
+            setFiles([{ file: localFile, url }]);
+          } else {
+            const publicUrl = getPublicVideoUrl(asset.storage_path);
+            // Fetch the remote file so the editor/clipper has a real File object.
+            try {
+              const resp = await fetch(publicUrl);
+              const blob = await resp.blob();
+              const file = new File([blob], asset.original_name ?? 'video.mp4', { type: blob.type || 'video/mp4' });
+              if (cancelled) return;
+              const url = URL.createObjectURL(file);
+              setFiles([{ file, url }]);
+              // Cache locally for next time
+              if (partidoId) saveVideoFile(partidoId, file).catch(() => {});
+            } catch {
+              // If fetch fails, at least show the video via public URL (no editing)
+              if (cancelled) return;
+              setFiles([{ file: new File([], asset.original_name ?? 'video.mp4'), url: publicUrl }]);
+            }
+          }
+          setActiveIdx(0);
+          setMode('local');
+          setScreen('playing');
+          onModeChange?.('local');
+          setRestoring(false);
+          return;
+        }
+
+        // No DB asset → try IndexedDB only
+        const file = await loadVideoFile(partidoId).catch(() => null);
+        if (cancelled) return;
+        if (file) {
+          const url = URL.createObjectURL(file);
+          setFiles([{ file, url }]); setActiveIdx(0); setMode('local'); setScreen('playing'); onModeChange?.('local');
+        }
+      } catch {
+        // ignore — user can load a video manually
+      } finally {
+        if (!cancelled) setRestoring(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [partidoId]);
 
@@ -134,12 +205,24 @@ export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProp
       files.forEach(f => URL.revokeObjectURL(f.url));
       setFiles(mapped); setActiveIdx(0); setMode("local"); setScreen("playing"); setCurrentTime(0); setIsPlaying(false);
       onModeChange?.("local");
-      if (partidoId && newFiles[0]) saveVideoFile(partidoId, newFiles[0]).catch(()=>{});
+      // Persist: IndexedDB (fast local cache) + Supabase Storage (durable + shareable)
+      if (partidoId && newFiles[0]) {
+        saveVideoFile(partidoId, newFiles[0]).catch(()=>{});
+        if (userId && !readOnly) {
+          setUploadPct(0);
+          uploadLocalVideo(userId, partidoId, newFiles[0], (pct) => setUploadPct(pct))
+            .then(() => setUploadPct(null))
+            .catch((err) => {
+              console.error('[AnalyzerVideoPlayer] upload failed:', err);
+              setUploadPct(null);
+            });
+        }
+      }
     } else {
       setFiles(prev => [...prev, ...mapped]);
       setShowFileList(true);
     }
-  }, [files, destroyYT, onModeChange, partidoId]);
+  }, [files, destroyYT, onModeChange, partidoId, userId, readOnly]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []); if(!picked.length)return;
@@ -168,7 +251,13 @@ export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProp
     const id = extractYouTubeId(ytUrl); if(!id){setYtError("URL inválida. Revisá el formato.");return;}
     setYtError(""); files.forEach(f=>URL.revokeObjectURL(f.url)); setFiles([]);
     setYtId(id); setMode("youtube"); setScreen("playing"); setCurrentTime(0); setIsPlaying(false); onModeChange?.("youtube");
-  }, [ytUrl, files, onModeChange]);
+    // Persist the YouTube reference so it survives refresh and can be shared
+    if (partidoId && userId && !readOnly) {
+      saveYouTubeVideo(userId, partidoId, ytUrl.trim(), id).catch((err) => {
+        console.error('[AnalyzerVideoPlayer] save youtube failed:', err);
+      });
+    }
+  }, [ytUrl, files, onModeChange, partidoId, userId, readOnly]);
 
   const handleChange = useCallback(() => {
     destroyYT(); files.forEach(f=>URL.revokeObjectURL(f.url)); setFiles([]); setMode(null); setScreen("pick"); setCurrentTime(0); setIsPlaying(false); onModeChange?.(null);
@@ -178,8 +267,32 @@ export const AnalyzerVideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProp
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Restoring spinner */}
+      {restoring && screen === "pick" && (
+        <div className="flex items-center justify-center gap-2 py-8 text-[#484f58]">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-xs font-mono">Buscando video guardado…</span>
+        </div>
+      )}
+
+      {/* Upload progress banner */}
+      {uploadPct !== null && (
+        <div className="bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-xs font-mono text-[#00ff88] mb-1">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Subiendo video a la nube… {uploadPct}%
+          </div>
+          <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
+            <div className="h-full bg-[#00ff88] transition-all" style={{ width: `${uploadPct}%` }} />
+          </div>
+          <p className="text-[10px] text-[#484f58] font-mono mt-1">
+            Podés seguir trabajando — el video ya está disponible localmente.
+          </p>
+        </div>
+      )}
+
       {/* Source picker */}
-      {screen==="pick" && (
+      {screen==="pick" && !restoring && (
         <div className="flex flex-col gap-3">
           <p className="text-xs font-mono text-[#484f58] text-center uppercase tracking-widest">
             ¿Cómo querés cargar el video?

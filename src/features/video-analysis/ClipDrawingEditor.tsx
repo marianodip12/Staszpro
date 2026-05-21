@@ -635,7 +635,7 @@ export function ClipDrawingEditor({ localFile, initialTime = 0, clipRange, onClo
       )}
 
       {/* Video preview — bigger now */}
-      <div className="flex-1 flex items-center justify-center bg-black overflow-hidden min-h-0 relative">
+      <div className="flex-1 flex items-center justify-center bg-black overflow-hidden relative" style={{ minHeight: 280 }}>
         {videos.length === 0 ? (
           <div className="text-center text-[#484f58]">
             <Video className="w-12 h-12 mx-auto mb-3 opacity-40" />
@@ -711,7 +711,7 @@ export function ClipDrawingEditor({ localFile, initialTime = 0, clipRange, onClo
       {/* Timeline */}
       <div ref={timelineRef}
         className="bg-[#0a0e13] border-t border-[#21262d] overflow-x-auto overflow-y-auto shrink-0"
-        style={{ maxHeight: 280, minHeight: 140 }}>
+        style={{ height: 240 }}>
         <div style={{ width: timelineWidth }}>
 
           {/* Ruler */}

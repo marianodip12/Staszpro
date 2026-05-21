@@ -303,7 +303,7 @@ export const VideoAnalysisPage = () => {
         <div className="contents xl:flex xl:flex-col xl:gap-4 xl:min-w-0">
           {/* Video */}
           <section className="rounded-none sm:rounded-2xl bg-[#0d1117] border-y sm:border border-[#21262d] p-2 sm:p-4 sticky top-[56px] xl:top-[70px] z-30 shadow-2xl -mx-4 sm:mx-0 self-start xl:self-stretch">
-            <AnalyzerVideoPlayer ref={videoRef} onModeChange={setVideoMode} partidoId={matchId} />
+            <AnalyzerVideoPlayer ref={videoRef} onModeChange={setVideoMode} partidoId={matchId} userId={userId} />
             {videoMode === 'local' && (
               <button
                 onClick={() => {

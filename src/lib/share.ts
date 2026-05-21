@@ -236,12 +236,22 @@ export async function loadSharedMatch(token: string): Promise<SharedMatchData | 
         completed: e.completed ?? true,
       })).sort((a, b) => a.min - b.min);
 
+      // Score from events is the source of truth — the matches table columns
+      // (home_score/away_score) can be stale if the sync hasn't finished.
+      // Count goals per team directly.
+      const goalsHome = events.filter((e) => e.team === 'home' && e.type === 'goal').length;
+      const goalsAway = events.filter((e) => e.team === 'away' && e.type === 'goal').length;
+
+      // Use the DB column only as a fallback when there are no events at all.
+      const finalHs = events.length > 0 ? goalsHome : (data.home_score ?? 0);
+      const finalAs = events.length > 0 ? goalsAway : (data.away_score ?? 0);
+
       const match: MatchSummary = {
         id: data.local_id ?? data.id,
         home: data.home_name,
         away: data.away_name,
-        hs: data.home_score ?? 0,
-        as: data.away_score ?? 0,
+        hs: finalHs,
+        as: finalAs,
         date: data.match_date ?? null,
         competition: data.competition ?? null,
         homeColor: data.home_color ?? '#3B82F6',
