@@ -6,6 +6,7 @@ import { AdminTicketsPanel } from './admin-tickets-panel';
 
 interface AdminMatch {
   match_id: string;
+  local_id: string | null;
   user_email: string;
   home_name: string;
   away_name: string;
@@ -279,14 +280,24 @@ export const AdminPage = () => {
                         {new Date(m.created_at).toLocaleDateString('es-AR')}
                       </td>
                       <td className="px-3 py-3">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMatch(m.match_id, `${m.home_name} vs ${m.away_name}`)}
-                          className="text-muted-fg hover:text-danger transition-colors"
-                          title="Eliminar partido"
-                        >
-                          🗑
-                        </button>
+                        <div className="flex items-center gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/app/analysis/${m.local_id ?? m.match_id}`)}
+                            className="text-muted-fg hover:text-primary transition-colors text-xs"
+                            title="Ver detalle del partido"
+                          >
+                            👁 Ver
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMatch(m.match_id, `${m.home_name} vs ${m.away_name}`)}
+                            className="text-muted-fg hover:text-danger transition-colors"
+                            title="Eliminar partido"
+                          >
+                            🗑
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

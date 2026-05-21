@@ -52,7 +52,17 @@ const SHOT_BTNS = [
   { type: 'post'  as ShotType, label: 'PALO',     cls: 'bg-amber-500/10 border-amber-500/40 text-amber-400 hover:bg-amber-500/20' },
 ] as const;
 
-export const LiveMatchFree = () => {
+export interface LiveMatchFreeProps {
+  /** When provided, renders a Completo/Rápido toggle (used inside the Pro page). */
+  modeSwitch?: {
+    mode: 'quick' | 'full';
+    onChange: (m: 'quick' | 'full') => void;
+    fullLabel: string;
+    quickLabel: string;
+  };
+}
+
+export const LiveMatchFree = ({ modeSwitch }: LiveMatchFreeProps = {}) => {
   const t           = useT();
   const navigate    = useNavigate();
   const status        = useMatchStore((s) => s.status);
@@ -192,6 +202,25 @@ export const LiveMatchFree = () => {
         homeScore={score.h} awayScore={score.a}
         clock={clock} onClockChange={setClock}
       />
+
+      {/* Mode switch — only shown when embedded in the Pro page */}
+      {modeSwitch && (
+        <div className="rounded-lg border border-border bg-surface p-1 flex">
+          {(['full', 'quick'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => modeSwitch.onChange(m)}
+              className={cn(
+                'flex-1 h-8 text-xs font-medium rounded-md transition-colors',
+                modeSwitch.mode === m ? 'bg-primary/20 text-primary' : 'text-muted-fg hover:text-fg',
+              )}
+            >
+              {m === 'full' ? modeSwitch.fullLabel : modeSwitch.quickLabel}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Equipo atacante */}
       <div className="rounded-lg border border-border bg-surface p-1 flex gap-1">

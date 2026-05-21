@@ -411,6 +411,22 @@ const LiveMatchPagePro = () => {
 
   const longRangeActive = draft.courtZone === 'long_range';
 
+  // In Quick mode, paid plans get the SAME simple direct-button flow as Free.
+  // We reuse LiveMatchFree and pass it the mode switch so the user can flip
+  // back to Completo.
+  if (mode === 'quick') {
+    return (
+      <LiveMatchFree
+        modeSwitch={{
+          mode,
+          onChange: setMode,
+          fullLabel: t.live_mode_full,
+          quickLabel: t.live_mode_quick,
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-3 pb-4">
       <SuperpowerBar />
@@ -508,18 +524,8 @@ const LiveMatchPagePro = () => {
             active={false}
             tone="neutral"
             onClick={() => {
-              // "Fuera / Falta" is a shortcut for a missed shot — commit directly
-              if (mode === 'quick') {
-                addEvent(buildEvent({
-                  type: 'miss',
-                  draft: { ...draft, team: attacker, goalZone: 'out' },
-                  clock,
-                  quickMode: true,
-                }));
-                setDraft({ ...EMPTY_DRAFT, team: attacker });
-                maybeAutoSwitch('miss', attacker);
-                return;
-              }
+              // "Fuera / Falta" is a shortcut for a missed shot.
+              // (Quick mode is handled by LiveMatchFree — this only runs in full mode.)
               const next: EventDraft = { ...draft, team: attacker, goalZone: 'out' };
               setDraft(next);
               setPendingShot({ draft: next, step: 'shooter', outcome: 'miss' });
@@ -530,17 +536,6 @@ const LiveMatchPagePro = () => {
             active={false}
             tone="warning"
             onClick={() => {
-              if (mode === 'quick') {
-                addEvent(buildEvent({
-                  type: 'post',
-                  draft: { ...draft, team: attacker, goalZone: 'post' },
-                  clock,
-                  quickMode: true,
-                }));
-                setDraft({ ...EMPTY_DRAFT, team: attacker });
-                maybeAutoSwitch('post', attacker);
-                return;
-              }
               const next: EventDraft = { ...draft, team: attacker, goalZone: 'post' };
               setDraft(next);
               setPendingShot({ draft: next, step: 'shooter', outcome: 'post' });
