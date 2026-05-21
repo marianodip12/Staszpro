@@ -12,7 +12,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, ArrowLeft, Pencil } from 'lucide-react';
+import { Activity, ArrowLeft, Pencil, Share2 } from 'lucide-react';
 import { useMatchStore } from '@/lib/store';
 import { usePlan, hasVideoAndAI } from '@/lib/use-plan';
 import { useAuth } from '@/lib/auth';
@@ -46,6 +46,7 @@ import { EventList } from './EventList';
 import { PlayerPanel } from './PlayerPanel';
 import { ClipEditor } from './ClipEditor';
 import { ClipDrawingEditor } from './ClipDrawingEditor';
+import { ensureShareToken } from '@/lib/analyzer-video-storage';
 
 export const VideoAnalysisPage = () => {
   const { id: matchId } = useParams<{ id: string }>();
@@ -63,6 +64,9 @@ export const VideoAnalysisPage = () => {
   const [videoMode, setVideoMode] = useState<VideoMode>(null);
   const [showDrawEditor, setShowDrawEditor] = useState(false);
   const [editClipRange, setEditClipRange] = useState<{ start: number; end: number } | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // ── Queries ─────────────────────────────────────────────────────────────
   const eventsQuery = useQuery({
@@ -215,6 +219,26 @@ export const VideoAnalysisPage = () => {
     setShowDrawEditor(true);
   }, []);
 
+  // ── Share: generate a public link for this analysis ─────────────────────
+  const handleShare = useCallback(async () => {
+    if (!matchId) return;
+    setSharing(true);
+    try {
+      const token = await ensureShareToken(matchId);
+      const url = `${window.location.origin}/share-analysis/${token}`;
+      setShareUrl(url);
+    } catch (err) {
+      console.error('[VideoAnalysis] share failed:', err);
+      alert(
+        err instanceof Error && err.message.includes('No hay video')
+          ? 'Primero cargá un video para poder compartir el análisis.'
+          : 'No se pudo generar el link. Intentá de nuevo.',
+      );
+    } finally {
+      setSharing(false);
+    }
+  }, [matchId]);
+
   // ── Plan gate ───────────────────────────────────────────────────────────
   if (!plan.loading && !hasVideoAndAI(plan)) {
     return (
@@ -279,6 +303,16 @@ export const VideoAnalysisPage = () => {
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {videoMode && (
+              <button
+                onClick={handleShare}
+                disabled={sharing}
+                className="flex items-center gap-1.5 text-xs font-mono text-[#00ff88] hover:text-[#00ff88]/80 border border-[#00ff88]/30 hover:border-[#00ff88]/50 px-3 py-1.5 rounded-lg bg-[#00ff88]/10 transition-all disabled:opacity-50"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:block">{sharing ? '...' : 'COMPARTIR'}</span>
+              </button>
+            )}
             {videoMode === 'local' && (
               <button
                 onClick={() => {
@@ -297,6 +331,38 @@ export const VideoAnalysisPage = () => {
           </div>
         </div>
       </header>
+
+      {/* Share link banner */}
+      {shareUrl && (
+        <div className="bg-[#00ff88]/10 border-b border-[#00ff88]/30 px-4 py-2.5">
+          <div className="max-w-[1400px] mx-auto flex items-center gap-2 flex-wrap">
+            <Share2 className="w-4 h-4 text-[#00ff88] shrink-0" />
+            <span className="text-xs font-mono text-[#00ff88] shrink-0">Link público:</span>
+            <input
+              readOnly
+              value={shareUrl}
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className="flex-1 min-w-[200px] bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-xs font-mono text-white"
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(shareUrl).catch(() => {});
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="text-xs font-mono px-3 py-1 rounded bg-[#00ff88] text-black font-bold shrink-0"
+            >
+              {copied ? '✓ Copiado' : 'Copiar'}
+            </button>
+            <button
+              onClick={() => setShareUrl(null)}
+              className="text-xs font-mono text-[#484f58] hover:text-white shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
         {/* Left column */}
