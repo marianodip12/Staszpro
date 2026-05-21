@@ -10,6 +10,7 @@ import { VideoAnalysisPage } from '@/features/video-analysis/video-analysis-page
 import { StatsPage } from '@/features/stats/stats-page';
 import { EvolutionPage } from '@/features/evolution/evolution-page';
 import { SharePage } from '@/features/share/share-page';
+import { SharedAnalysisPage } from '@/features/video-analysis/shared-analysis-page';
 import { LandingPage } from '@/features/landing/landing-page';
 import { AuthPage } from '@/features/auth/auth-page';
 import { AdminPage } from '@/features/admin/admin-page';
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
   { path: '/login', element: <AuthPage mode="signin" /> },
   { path: '/signup', element: <AuthPage mode="signup" /> },
   { path: '/share/:token', element: <SharePage /> },
+  { path: '/share-analysis/:token', element: <SharedAnalysisPage /> },
 
   // Protected app — everything under /app requires login
   {

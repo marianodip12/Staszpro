@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn';
 import { TutorialOverlay, useShouldShowTutorial } from '@/features/tutorial/tutorial-overlay';
 import { SupportButton } from '@/components/support-button';
 import { BetaBanner } from '@/components/beta-banner';
+import { AdminPlanPreview } from '@/components/admin-plan-preview';
 import { SettingsPanel } from '@/components/settings-panel';
 
 export const AppShell = () => {
@@ -180,6 +181,9 @@ export const AppShell = () => {
               🛡️ <span>Admin</span>
             </NavLink>
           )}
+
+          {/* Admin plan preview selector */}
+          {isAdmin && <AdminPlanPreview />}
 
           {/* Modos experimentales (Superpower / UI Pro Max) */}
           <div className="mt-1">
