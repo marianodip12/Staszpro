@@ -31,7 +31,7 @@ import { EventEditDialog } from './event-edit-dialog';
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import { LiveMatchFree } from './live-match-free';
 import { SuperpowerBar } from './superpower-bar';
-import { softDeleteEventRemote } from '@/lib/sync';
+import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
 import { hasCompleteMode, usePlan } from '@/lib/use-plan';
 
 // ─── Plan-aware wrapper ──────────────────────────────────────────────────────
@@ -407,6 +407,9 @@ const LiveMatchPagePro = () => {
   };
   const handleDiscard = () => {
     if (window.confirm(t.live_discard_confirm)) {
+      // ⚠️ Primero soft-delete server-side (lee liveMatch.id del store),
+      // recién después limpiar local. Si no, el partido resucita al recargar.
+      void discardLiveMatchRemote().finally(() => {});
       closeLive();
       navigate('/app');
     }

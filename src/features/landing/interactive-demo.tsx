@@ -3,6 +3,7 @@ import { CourtView } from '@/components/handball/court-view';
 import { GoalGrid } from '@/components/handball/goal-grid';
 import { useT } from '@/lib/i18n';
 import type { CourtZoneId, GoalZoneId } from '@/domain/types';
+import { POSITIONS } from '@/domain/constants';
 import { cn } from '@/lib/cn';
 
 type Mode = 'rapido' | 'completo';
@@ -23,7 +24,9 @@ interface QuickLog {
   player: string;
 }
 
-const DEMO_PLAYERS = [
+interface DemoPlayer { number: number; name: string; position: string }
+
+const DEMO_PLAYERS: DemoPlayer[] = [
   { number: 7,  name: 'D. Simonet',   position: 'Armador' },
   { number: 8,  name: 'P. Vainstein', position: 'Lat. Izq.' },
   { number: 11, name: 'D. Bonanno',   position: 'Ext. Izq.' },
@@ -100,6 +103,7 @@ export const InteractiveDemo = () => {
 
 // ═══ MODO RÁPIDO DEMO ═══════════════════════════════════════════════════
 const QuickModeDemo = () => {
+  const [roster, setRoster] = useState<DemoPlayer[]>(DEMO_PLAYERS);
   const [draftEvent, setDraftEvent] = useState<QuickEvent | null>(null);
   const [show7m, setShow7m] = useState(false);
   const [log, setLog] = useState<QuickLog[]>([
@@ -216,31 +220,15 @@ const QuickModeDemo = () => {
           <p className="text-xs font-semibold text-muted-fg uppercase tracking-wider mb-2">
             2. ¿Qué jugador? <span className="normal-case text-[10px] text-muted-fg/70 font-normal">(opcional)</span>
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {DEMO_PLAYERS.map((p) => (
-              <button
-                key={p.number}
-                type="button"
-                onClick={() => handlePlayerClick(p.name)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border bg-surface-2 hover:border-primary/40 hover:bg-primary/5 transition-colors text-left"
-              >
-                <span className="w-6 h-6 rounded-full bg-bg/60 grid place-items-center text-[10px] font-bold tabular border border-border shrink-0">
-                  {p.number}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium truncate">{p.name}</p>
-                  <p className="text-[9px] text-muted-fg truncate">{p.position}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={() => handlePlayerClick('—')}
-            className="w-full mt-2 text-[11px] text-muted-fg hover:text-fg py-1.5 rounded-md border border-dashed border-border hover:border-primary/40 transition-colors"
-          >
-            Saltar (sin asociar jugador)
-          </button>
+          <DemoPlayerPicker
+            roster={roster}
+            onPick={(p) => handlePlayerClick(p.name)}
+            onAdd={(p) => {
+              setRoster((prev) => prev.some((x) => x.number === p.number) ? prev : [...prev, p]);
+              handlePlayerClick(p.name);
+            }}
+            onSkip={() => handlePlayerClick('—')}
+          />
         </div>
       )}
 
@@ -291,9 +279,11 @@ const QuickModeDemo = () => {
 // ═══ MODO COMPLETO DEMO ═════════════════════════════════════════════════
 const CompleteModeDemo = () => {
   const t = useT();
+  const [roster, setRoster] = useState<DemoPlayer[]>(DEMO_PLAYERS);
   const [shots, setShots] = useState<DemoShot[]>(SEED_SHOTS);
   const [draftGoal, setDraftGoal] = useState<GoalZoneId | null>(null);
   const [draftCourt, setDraftCourt] = useState<CourtZoneId | null>(null);
+  const [pendingOutcome, setPendingOutcome] = useState<Outcome | null>(null);
 
   const canPickOutcome = draftGoal !== null && draftCourt !== null;
 
@@ -306,18 +296,26 @@ const CompleteModeDemo = () => {
 
   const handleOutcome = (outcome: Outcome) => {
     if (!draftGoal || !draftCourt) return;
+    // Igual que en un partido real: después del resultado, ¿quién tiró?
+    setPendingOutcome(outcome);
+  };
+
+  const commitShot = (playerName?: string) => {
+    if (!draftGoal || !draftCourt || !pendingOutcome) return;
     setShots((prev) => [
       ...prev,
-      { id: prev.length + 1, goalZone: draftGoal, courtZone: draftCourt, outcome },
+      { id: prev.length + 1, goalZone: draftGoal, courtZone: draftCourt, outcome: pendingOutcome, player: playerName },
     ]);
     setDraftGoal(null);
     setDraftCourt(null);
+    setPendingOutcome(null);
   };
 
   const handleReset = () => {
     setShots(SEED_SHOTS);
     setDraftGoal(null);
     setDraftCourt(null);
+    setPendingOutcome(null);
   };
 
   return (
@@ -366,6 +364,23 @@ const CompleteModeDemo = () => {
         </div>
       </section>
 
+      {pendingOutcome && (
+        <section className="animate-fade-in">
+          <p className="text-xs font-semibold text-muted-fg uppercase tracking-wider mb-2">
+            4. ¿Quién tiró?
+          </p>
+          <DemoPlayerPicker
+            roster={roster}
+            onPick={(p) => commitShot(p.name)}
+            onAdd={(p) => {
+              setRoster((prev) => prev.some((x) => x.number === p.number) ? prev : [...prev, p]);
+              commitShot(p.name);
+            }}
+            onSkip={() => commitShot(undefined)}
+          />
+        </section>
+      )}
+
       <div className="flex justify-center">
         <button
           type="button"
@@ -380,6 +395,148 @@ const CompleteModeDemo = () => {
 };
 
 // ─── Subcomponentes ──────────────────────────────────────────────────
+
+/**
+ * Picker de jugadores del demo — réplica fiel del PlayerPicker del partido
+ * real: roster agrupado por posición + alta rápida con número, nombre y
+ * posición. Lo que se agrega queda disponible para los próximos eventos.
+ */
+const DemoPlayerPicker = ({
+  roster,
+  onPick,
+  onAdd,
+  onSkip,
+}: {
+  roster: DemoPlayer[];
+  onPick: (p: DemoPlayer) => void;
+  onAdd: (p: DemoPlayer) => void;
+  onSkip: () => void;
+}) => {
+  const [showForm, setShowForm] = useState(false);
+  const [num, setNum] = useState('');
+  const [name, setName] = useState('');
+  const [position, setPosition] = useState<string>('Campo');
+
+  const grouped = useMemo(() => {
+    const byPos: Record<string, DemoPlayer[]> = {};
+    for (const p of roster) {
+      const key = p.position || 'Otros';
+      if (!byPos[key]) byPos[key] = [];
+      byPos[key].push(p);
+    }
+    Object.values(byPos).forEach((ps) => ps.sort((a, b) => a.number - b.number));
+    return byPos;
+  }, [roster]);
+
+  const handleAdd = () => {
+    const n = Number(num);
+    if (!Number.isFinite(n) || n < 1 || n > 99) return;
+    onAdd({ number: n, name: name.trim() || `#${n}`, position });
+    setNum(''); setName(''); setPosition('Campo'); setShowForm(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      {Object.entries(grouped).map(([pos, ps]) => (
+        <div key={pos}>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-fg mb-1">{pos}</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            {ps.map((p) => (
+              <button
+                key={`${p.number}-${p.name}`}
+                type="button"
+                onClick={() => onPick(p)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border bg-surface-2 hover:border-primary/40 hover:bg-primary/5 transition-colors text-left"
+              >
+                <span className="w-6 h-6 rounded-full bg-bg/60 grid place-items-center text-[10px] font-bold tabular border border-border shrink-0">
+                  {p.number}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium truncate">{p.name}</p>
+                  <p className="text-[9px] text-muted-fg truncate">{p.position}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {showForm ? (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2 animate-fade-in">
+          <div className="grid grid-cols-[64px_1fr] gap-2">
+            <input
+              type="number"
+              min={1}
+              max={99}
+              placeholder="N°"
+              value={num}
+              onChange={(e) => setNum(e.target.value)}
+              className="h-8 rounded-md border border-border bg-surface px-2 text-xs font-mono"
+              autoFocus
+            />
+            <input
+              placeholder="Nombre (opcional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-8 rounded-md border border-border bg-surface px-2 text-xs"
+            />
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {POSITIONS.map((pos) => (
+              <button
+                key={pos}
+                type="button"
+                onClick={() => setPosition(pos)}
+                className={cn(
+                  'px-2 py-1 rounded-md border text-[10px] font-medium transition-colors',
+                  position === pos
+                    ? 'border-primary bg-primary/15 text-primary'
+                    : 'border-border bg-surface-2 text-muted-fg hover:border-primary/50',
+                )}
+              >
+                {pos}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="h-8 rounded-md border border-border text-[11px] text-muted-fg hover:text-fg transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!num}
+              className="h-8 rounded-md bg-primary text-white text-[11px] font-semibold disabled:opacity-40 transition-opacity"
+            >
+              Agregar y taggear
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="w-full text-[11px] text-primary py-1.5 rounded-md border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors"
+        >
+          ➕ Agregar jugador (número, nombre y posición)
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={onSkip}
+        className="w-full text-[11px] text-muted-fg hover:text-fg py-1.5 rounded-md border border-dashed border-border hover:border-primary/40 transition-colors"
+      >
+        Saltar (sin asociar jugador)
+      </button>
+    </div>
+  );
+};
+
 const DemoStat = ({ label, value, color }: { label: string; value: number | string; color: string }) => (
   <div className="rounded-md border border-border bg-surface-2/40 p-3 text-center">
     <div className="font-mono text-2xl font-semibold tabular leading-none" style={{ color }}>

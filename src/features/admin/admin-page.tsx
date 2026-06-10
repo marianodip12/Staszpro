@@ -46,7 +46,14 @@ interface AdminPayment {
   paid_at: string | null;
 }
 
-type Tab = 'matches' | 'users' | 'payments' | 'tickets';
+interface VisitStat {
+  day: string;
+  landing_visits: number;
+  app_visits: number;
+  unique_users: number;
+}
+
+type Tab = 'matches' | 'users' | 'payments' | 'tickets' | 'visits';
 
 export const AdminPage = () => {
 
@@ -56,6 +63,7 @@ export const AdminPage = () => {
   const [matches, setMatches] = useState<AdminMatch[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [visits, setVisits] = useState<VisitStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [seedingUser, setSeedingUser] = useState<string | null>(null);
 
@@ -105,11 +113,19 @@ export const AdminPage = () => {
     setPayments((data as AdminPayment[]) ?? []);
   }, []);
 
+  const loadVisits = useCallback(async () => {
+    const { data, error } = await supabase.rpc('get_visit_stats');
+    if (error) {
+      console.error('[admin] loadVisits error:', error.message);
+    }
+    setVisits((data as VisitStat[]) ?? []);
+  }, []);
+
   useEffect(() => {
     if (isAdmin !== true) return;
     setLoading(true);
-    Promise.all([loadMatches(), loadUsers(), loadPayments()]).finally(() => setLoading(false));
-  }, [isAdmin, loadMatches, loadUsers, loadPayments]);
+    Promise.all([loadMatches(), loadUsers(), loadPayments(), loadVisits()]).finally(() => setLoading(false));
+  }, [isAdmin, loadMatches, loadUsers, loadPayments, loadVisits]);
 
   const handlePaymentStatus = async (paymentId: string, newStatus: 'paid' | 'rejected' | 'cancelled', email: string, plan: string) => {
     const action = newStatus === 'paid' ? 'aprobar' : newStatus === 'rejected' ? 'rechazar' : 'cancelar';
@@ -229,6 +245,9 @@ export const AdminPage = () => {
         </TabBtn>
         <TabBtn active={tab === 'tickets'} onClick={() => setTab('tickets')}>
           🎫 Tickets
+        </TabBtn>
+        <TabBtn active={tab === 'visits'} onClick={() => setTab('visits')}>
+          👁️ Visitas
         </TabBtn>
       </div>
 
@@ -492,10 +511,48 @@ export const AdminPage = () => {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'tickets' ? (
         /* ─── TICKETS ─── */
         <div className="rounded-xl border border-border bg-surface p-4 md:p-5">
           <AdminTicketsPanel />
+        </div>
+      ) : (
+        /* ─── VISITAS (últimos 30 días) ─── */
+        <div className="rounded-xl border border-border bg-surface overflow-hidden">
+          {visits.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-fg">
+              <div className="text-3xl mb-2">👁️</div>
+              <p>Todavía no hay visitas registradas.</p>
+              <p className="text-[11px] mt-1">Se registra una visita por sesión de navegador, en landing y en la app.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-muted-fg border-b border-border">
+                    <th className="px-4 py-3">Día</th>
+                    <th className="px-4 py-3 text-right">Landing</th>
+                    <th className="px-4 py-3 text-right">App</th>
+                    <th className="px-4 py-3 text-right">Usuarios únicos</th>
+                    <th className="px-4 py-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visits.map((v) => (
+                    <tr key={v.day} className="border-b border-border/50 hover:bg-surface-2/50">
+                      <td className="px-4 py-2.5 font-mono text-xs">{v.day}</td>
+                      <td className="px-4 py-2.5 text-right font-mono tabular">{v.landing_visits}</td>
+                      <td className="px-4 py-2.5 text-right font-mono tabular">{v.app_visits}</td>
+                      <td className="px-4 py-2.5 text-right font-mono tabular text-primary">{v.unique_users}</td>
+                      <td className="px-4 py-2.5 text-right font-mono tabular font-bold">
+                        {v.landing_visits + v.app_visits}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

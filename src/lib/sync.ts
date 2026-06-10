@@ -796,6 +796,42 @@ export async function softDeleteEventRemote(eventLocalId: string): Promise<void>
   }
 }
 
+/**
+ * Descartar partido en vivo: soft-delete del match en el server.
+ * Sin esto, closeLive() solo limpiaba el estado local y el server quedaba
+ * con status='live' → downloadLiveFromServer lo resucitaba en cada carga.
+ * ⚠️ Llamar ANTES de closeLive() (necesita el liveMatch.id del store).
+ */
+export async function discardLiveMatchRemote(): Promise<void> {
+  if (!isSupabaseReady()) return;
+  const state = useMatchStore.getState();
+  const localId = state.liveMatch.id;
+  if (!localId) return;
+
+  try {
+    if (!userId) userId = await ensureAnonSession();
+    if (!userId) return;
+
+    let dbId = matchCache.get(localId);
+    if (!dbId) {
+      const { data } = await supabase
+        .from('matches').select('id')
+        .eq('user_id', userId).eq('local_id', localId).maybeSingle();
+      if (data) dbId = data.id;
+    }
+    if (!dbId) return; // nunca llegó a subirse, nada que borrar
+
+    const { error } = await supabase.rpc('soft_delete_match', { p_match_id: dbId });
+    if (error) { console.warn('[sync] discard live RPC error:', error.message); return; }
+
+    matchCache.delete(localId);
+    for (const ev of state.liveEvents) eventCache.add(ev.id);
+    console.log('[sync] partido en vivo descartado server-side:', localId);
+  } catch (err) {
+    console.error('[sync] discard live failed:', err);
+  }
+}
+
 export async function forceSyncNow(): Promise<void> {
   if (!userId) {
     userId = await ensureAnonSession();

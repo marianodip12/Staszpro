@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n, useT, LOCALE_LABELS, type Locale } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
+import { trackVisit } from '@/lib/visits';
 import { InteractiveDemo } from './interactive-demo';
 import { ModesShowcase } from './modes-showcase';
 import { PricingSection } from './pricing-section';
@@ -10,6 +12,8 @@ import { SupportButton } from '@/components/support-button';
 const LOCALES: Locale[] = ['es', 'en', 'pt'];
 
 export const LandingPage = () => {
+  useEffect(() => { void trackVisit('landing'); }, []);
+
   const t = useT();
   const { locale, setLocale } = useI18n();
   const { isAuthenticated } = useAuth();
