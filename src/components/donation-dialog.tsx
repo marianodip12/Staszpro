@@ -6,6 +6,30 @@ import { cn } from '@/lib/cn';
 
 const PRESETS = [2000, 5000, 10000, 20000];
 
+const TransferRow = ({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard bloqueado */ }
+  };
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="text-muted-fg shrink-0 w-16">{label}</span>
+      <span className={cn('flex-1 text-right truncate text-fg', mono && 'font-mono')}>{value}</span>
+      <button
+        type="button"
+        onClick={copy}
+        className="shrink-0 px-1.5 py-0.5 rounded border border-border text-[10px] text-muted-fg hover:text-fg hover:border-primary/50 transition-colors"
+      >
+        {copied ? '✓' : 'Copiar'}
+      </button>
+    </div>
+  );
+};
+
 interface DonationDialogProps {
   open: boolean;
   onClose: () => void;
@@ -102,6 +126,19 @@ export const DonationDialog = ({ open, onClose }: DonationDialogProps) => {
         <Button onClick={handleDonate} disabled={!valid || submitting} className="w-full">
           {submitting ? 'Creando checkout…' : `Donar $${(valid ? effectiveAmount : 0).toLocaleString('es-AR')} con Mercado Pago`}
         </Button>
+
+        {/* Transferencia directa */}
+        <div className="rounded-md border border-border bg-surface-2/50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-fg mb-2">
+            O por transferencia directa
+          </p>
+          <div className="space-y-1.5">
+            <TransferRow label="Titular" value="Mariano Nicolas Losada" />
+            <TransferRow label="Alias" value="statzpro.2026" mono />
+            <TransferRow label="CVU" value="0000003100068202065759" mono />
+            <TransferRow label="CUIT/CUIL" value="20-39978493-0" mono />
+          </div>
+        </div>
 
         <p className="text-[10px] text-muted-fg text-center">
           Pago procesado por Mercado Pago. No guardamos datos de tarjetas.

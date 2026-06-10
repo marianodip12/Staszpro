@@ -12,7 +12,6 @@ import { TutorialOverlay, useShouldShowTutorial } from '@/features/tutorial/tuto
 import { SupportButton } from '@/components/support-button';
 import { BetaBanner } from '@/components/beta-banner';
 import { AdminPlanPreview } from '@/components/admin-plan-preview';
-import { SettingsPanel } from '@/components/settings-panel';
 
 export const AppShell = () => {
   const location = useLocation();
@@ -189,11 +188,6 @@ export const AppShell = () => {
           {/* Admin plan preview selector */}
           {isAdmin && <AdminPlanPreview />}
 
-          {/* Modos experimentales (Superpower / UI Pro Max) */}
-          <div className="mt-1">
-            <SettingsPanel />
-          </div>
-
           {/* Replay tutorial */}
           <button
             type="button"
@@ -250,7 +244,6 @@ export const AppShell = () => {
           </div>
           <div className="flex items-center gap-2">
             <LocaleSelector locale={locale} setLocale={setLocale} compact />
-            <SettingsPanel variant="icon" />
             <div className={cn(
               'flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold uppercase tracking-wider',
               status === 'live'
