@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- StatzPro mark — fondo transparente para navbars -->
+  <defs>
+    <linearGradient id="spBarT" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="spBarHotT" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#00E5C4"/>
+    </linearGradient>
+  </defs>
+  <rect x="6"  y="42" width="10" height="16" rx="3" fill="url(#spBarT)" opacity="0.45"/>
+  <rect x="20" y="32" width="10" height="26" rx="3" fill="url(#spBarT)" opacity="0.7"/>
+  <rect x="34" y="21" width="10" height="37" rx="3" fill="url(#spBarT)"/>
+  <rect x="48" y="9"  width="10" height="49" rx="3" fill="url(#spBarHotT)"/>
+  <path d="M 7 35 Q 24 5 43 8" fill="none" stroke="#F59E0B" stroke-width="2.6"
+        stroke-linecap="round" stroke-dasharray="1 5.5" opacity="0.85"/>
+  <circle cx="48" cy="7" r="6.8" fill="#F59E0B"/>
+  <path d="M 43.3 4.4 Q 48 8.6 52.7 4.4 M 43.8 10.6 Q 48 6.4 52.2 10.6"
+        fill="none" stroke="#0B1F3A" stroke-width="1.35" stroke-linecap="round"/>
+</svg>
