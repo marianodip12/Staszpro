@@ -29,6 +29,7 @@ import { computeMatchStats } from '@/domain/stats';
 import type { CourtZoneId, GoalQuadrantId, HandballEvent } from '@/domain/types';
 import { selectHomeTeam, useMatchStore } from '@/lib/store';
 import { softDeleteEventRemote } from '@/lib/sync';
+import { AiAnalysisPanel } from '@/components/ai-analysis-panel';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { PlayersPanel } from './players-panel';
@@ -249,6 +250,9 @@ export const MatchAnalysisPage = ({ externalMatch, readonly = false }: MatchAnal
           )}
         </div>
       </header>
+
+      {/* ✨ Análisis IA — solo en la vista propia, no en partidos compartidos */}
+      {!readonly && <AiAnalysisPanel matchLocalId={match.id} />}
 
       {/* Team toggle + Period selector */}
       <div className="space-y-2">
