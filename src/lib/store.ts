@@ -39,6 +39,8 @@ interface MatchStoreState {
   autoSwitchAttacker: boolean;
   setAutoSwitchAttacker: (v: boolean) => void;
   /** Modo rápido para entrenadores experimentados — atajos en live match */
+  syncing: boolean;
+  setSyncing: (v: boolean) => void;
   superpowerMode: boolean;
   setSuperpowerMode: (v: boolean) => void;
   /** Tema visual premium opcional — más densidad, animaciones, tipografía pulida */
@@ -97,12 +99,19 @@ const rescoreEvents = (events: HandballEvent[]): HandballEvent[] => {
 export const useMatchStore = create<MatchStoreState>()(
   persist(
     (set, get) => ({
+      // ─── Sync UI state (no persistido) ────────────────────────────
+      syncing: false,
+      setSyncing: (v) => set({ syncing: v }),
+
       // ─── Settings ─────────────────────────────────────────────────
       autoSwitchAttacker: true,
       setAutoSwitchAttacker: (v) => set({ autoSwitchAttacker: v }),
-      superpowerMode: false,
+      // Superpower Mode y UI Pro Max son baseline desde v11.3: siempre ON,
+      // sin toggle de usuario. Los setters quedan por compatibilidad pero
+      // no se exponen en la UI.
+      superpowerMode: true,
       setSuperpowerMode: (v) => set({ superpowerMode: v }),
-      uiProMax: false,
+      uiProMax: true,
       setUiProMax: (v) => set({ uiProMax: v }),
 
       // ─── Teams ────────────────────────────────────────────────────
@@ -301,8 +310,7 @@ export const useMatchStore = create<MatchStoreState>()(
       // (If you want the clock to reset on reload, drop liveClock here.)
       partialize: (s) => ({
         autoSwitchAttacker: s.autoSwitchAttacker,
-        superpowerMode: s.superpowerMode,
-        uiProMax: s.uiProMax,
+        // superpowerMode/uiProMax ya no se persisten: siempre ON por defecto
         teams: s.teams,
         selectedTeamId: s.selectedTeamId,
         completed: s.completed,

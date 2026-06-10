@@ -24,9 +24,7 @@ export const LandingPage = () => {
       <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2 mr-auto">
-            <div className="w-7 h-7 rounded-md bg-primary grid place-items-center text-[11px] font-semibold text-primary-fg">
-              HP
-            </div>
+            <img src="/statzpro-favicon.svg" alt="StatzPro" className="w-7 h-7 rounded-md" />
             <span className="text-sm font-semibold tracking-tight">StatzPro</span>
           </Link>
 
@@ -180,9 +178,7 @@ export const LandingPage = () => {
       <footer className="mt-auto border-t border-border bg-surface/40">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-8 flex flex-col md:flex-row gap-4 items-center justify-between text-xs md:text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary grid place-items-center text-[10px] font-semibold text-primary-fg">
-              HP
-            </div>
+            <img src="/statzpro-favicon.svg" alt="StatzPro" className="w-6 h-6 rounded-md" />
             <span className="text-muted-fg">{t.landing_footer_tagline}</span>
           </div>
           <div className="flex items-center gap-4 text-muted-fg">

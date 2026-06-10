@@ -20,19 +20,19 @@
  * ser el PRIMER import en main.tsx.
  */
 
-export const APP_VERSION = 'v11.1-beta' as const;
+export const APP_VERSION = 'v11.3-beta' as const;
 
 const VERSION_KEY = 'hp_app_version';
 
 // Todas las claves de localStorage que podrían tener datos "sucios" del cliente.
 // Si agregás más persistencia, sumalas acá.
 //
-// ⚠️ NO incluir 'hp_seed_done_v1' acá — esa clave debe persistir entre versiones
-// para que el seed de equipos demo no vuelva a correr en cada upgrade.
+// ⚠️ NO incluir 'hp_seed_done_v1' ni 'hp_tutorial_completed' acá — deben
+// persistir entre versiones: el seed no debe re-correr, y el tutorial solo
+// se muestra automáticamente la PRIMERA vez (después es opcional desde el menú).
 const CACHE_KEYS_TO_WIPE = [
   'handball-pro-v11',   // zustand store principal (teams, events, completed)
   'hp_last_user_id',    // último user id — al limpiar forzamos re-fetch
-  'hp_tutorial_completed', // tutorial puede mostrarse de nuevo, es barato
   'hp_beta_banner_dismissed', // ver banner una vez más en cada versión nueva
   'hp_sync_queue',      // legacy queue, por si en algún momento existió
   'hp_pending_events',

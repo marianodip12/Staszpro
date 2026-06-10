@@ -1,5 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useMatchStore } from '@/lib/store';
+import { DEMO_MATCH_ID } from '@/lib/seed';
+import { isSupabaseReady, supabase } from '@/lib/supabase';
 import { cn } from '@/lib/cn';
 
 const TUTORIAL_KEY = 'hp_tutorial_completed';
@@ -7,71 +10,158 @@ const TUTORIAL_KEY = 'hp_tutorial_completed';
 interface TutorialStep {
   title: string;
   description: string;
+  tip?: string;          // tip secundario en letra chica
   icon: string;
-  route?: string;        // Navigate to this route when step activates
-  highlight?: string;     // CSS selector to highlight (optional)
+  route?: string;        // navega a esta ruta al activarse el paso
   position?: 'center' | 'bottom' | 'top';
 }
 
 const useTutorialSteps = (): TutorialStep[] => {
-  return [
-    {
-      title: '¡Bienvenido a StatzPro! 🤾',
-      description: 'Te vamos a mostrar cómo funciona la app en 6 pasos rápidos. Podés saltearlo cuando quieras.',
-      icon: '👋',
-      position: 'center',
-    },
-    {
-      title: '1. Creá tu equipo',
-      description: 'Empezá creando tu equipo con nombre, color y la lista de jugadores. Podés tener varios equipos.',
-      icon: '👥',
-      route: '/app/teams',
-      position: 'center',
-    },
-    {
-      title: '2. Registrá un partido en vivo',
-      description: 'Tocá "En Vivo" para arrancar un partido. Elegí los equipos, y empezá a registrar jugadas en tiempo real.',
-      icon: '📍',
-      route: '/app/live',
-      position: 'center',
-    },
-    {
-      title: '3. Registrá cada tiro',
-      description: 'Tocá la zona de la cancha de donde salió el tiro, después la zona del arco a donde fue. En 2 toques, evento registrado.',
-      icon: '🎯',
-      position: 'center',
-    },
-    {
-      title: '4. Analizá el partido',
-      description: 'Cuando termines, desde "Partidos" tocá "Análisis" para ver el mapa de calor, eficacia por zona y rendimiento de cada jugador.',
-      icon: '📊',
-      route: '/app',
-      position: 'center',
-    },
-    {
-      title: '5. Seguí la evolución',
-      description: 'En "Stats" y "Evolución" vas a ver cómo rinde tu equipo a lo largo de la temporada. Comparativas, tendencias y más.',
-      icon: '📈',
-      route: '/app/stats',
-      position: 'center',
-    },
-    {
-      title: '¡Listo! Empezá ahora 🚀',
-      description: 'Ya sabés lo esencial. Creá tu primer equipo y registrá tu primer partido. ¡Éxitos!',
-      icon: '✅',
-      route: '/app',
-      position: 'center',
-    },
-  ];
+  const completed = useMatchStore((s) => s.completed);
+  const hasDemo = completed.some((m) => m.id === DEMO_MATCH_ID);
+
+  return useMemo(() => {
+    const steps: TutorialStep[] = [
+      {
+        title: '¡Bienvenido a StatzPro! 🤾',
+        description:
+          'La app para registrar y analizar partidos de handball en tiempo real. Te mostramos todo en un par de minutos — y te dejamos un partido de ejemplo cargado para que toques sin miedo.',
+        tip: 'Podés salir cuando quieras y volver a ver este tutorial desde el menú (❓ Tutorial).',
+        icon: '👋',
+        position: 'center',
+      },
+      {
+        title: 'Tus equipos',
+        description:
+          'Acá creás y administrás tus equipos: nombre, color y plantel con número, nombre y posición de cada jugador. Ya te dejamos "Mi Equipo" armado con un plantel de ejemplo que podés editar o borrar.',
+        tip: 'Las posiciones importan: el análisis agrupa el rendimiento por puesto y recomienda tiradores según la zona.',
+        icon: '👥',
+        route: '/app/teams',
+        position: 'center',
+      },
+      {
+        title: 'El partido en vivo',
+        description:
+          'Desde "En Vivo" arrancás un partido: elegís los dos equipos, la competencia, y empezás a registrar. Hay dos formas de cargar: Modo Rápido (un toque por evento, ideal si estás solo en la tribuna) y Modo Completo (zona de tiro + sector del arco + jugador).',
+        tip: 'Podés alternar entre los dos modos durante el mismo partido.',
+        icon: '📍',
+        route: '/app/live',
+        position: 'center',
+      },
+      {
+        title: 'Registrar un tiro completo',
+        description:
+          'En Modo Completo cada tiro son 3 toques: 1) la zona de la cancha desde donde se tiró, 2) el sector del arco a donde fue, 3) quién lo tiró. Si el jugador no está en el plantel, lo agregás ahí mismo con número, nombre y posición — queda guardado para siempre.',
+        tip: 'También registrás atajadas, palos, errados, pérdidas, exclusiones de 2\u2032, tarjetas y timeouts.',
+        icon: '🎯',
+        position: 'center',
+      },
+      {
+        title: 'El reloj y los tiempos',
+        description:
+          'El cronómetro corre con el partido: pausalo en los timeouts, marcá el entretiempo y la app separa todo entre primer y segundo tiempo automáticamente. Cada evento queda con su minuto exacto.',
+        icon: '⏱️',
+        position: 'center',
+      },
+      {
+        title: 'Tu partido de ejemplo 📊',
+        description: hasDemo
+          ? 'Esto que ves es el análisis de un partido demo que te dejamos cargado: Mi Equipo 26–22 Rival Ejemplo. Mapa de calor de tiros, eficacia por zona, sectores del arco, rendimiento por jugador y línea de tiempo. Tocá y explorá — es tuyo, no rompés nada.'
+          : 'Cuando termina un partido, desde "Partidos" entrás a su Análisis: mapa de calor de tiros, eficacia por zona, sectores del arco, rendimiento por jugador y línea de tiempo.',
+        tip: 'Filtrá por equipo, por tiempo (1°/2°) o por situación numérica con los controles de arriba.',
+        icon: '📊',
+        route: hasDemo ? `/app/analysis/${DEMO_MATCH_ID}` : '/app',
+        position: 'center',
+      },
+      {
+        title: 'Análisis con IA ✨',
+        description:
+          'Arriba de cada análisis tenés el botón de Análisis IA: lee todos los eventos del partido y te devuelve una lectura táctica de entrenador — fortalezas, debilidades, recomendaciones para el próximo entrenamiento y jugadores destacados, con números.',
+        tip: 'Probalo con el partido demo cuando termines el tutorial.',
+        icon: '✨',
+        position: 'center',
+      },
+      {
+        title: 'Stats y Evolución',
+        description:
+          'En "Stats" tenés los acumulados de la temporada: goleadores, eficacia global, arqueros. En "Evolución" ves las tendencias partido a partido para detectar rachas y caídas de rendimiento.',
+        icon: '📈',
+        route: '/app/stats',
+        position: 'center',
+      },
+      {
+        title: 'Video y compartir',
+        description:
+          'Cada partido tiene una sección de Video para analizar grabaciones y recortar clips de jugadas. Y con el botón Compartir generás un link público del análisis para mandarle al cuerpo técnico o a los jugadores.',
+        icon: '🎬',
+        position: 'center',
+      },
+      {
+        title: 'Beta: todo desbloqueado 🚀',
+        description:
+          'Estás en la beta de StatzPro: todas las funciones pagas están desbloqueadas. Si la app te sirve, podés apoyar el proyecto con el botón ☕ Apoyar del banner — todo lo recaudado va al mantenimiento de servidores. Y cualquier problema, lo reportás desde Soporte.',
+        tip: 'Este tutorial queda siempre disponible en el menú: ❓ Tutorial.',
+        icon: '🚀',
+        route: '/app',
+        position: 'center',
+      },
+    ];
+    return steps;
+  }, [hasDemo]);
 };
 
+/**
+ * El tutorial se muestra solo automáticamente la PRIMERA vez que el usuario
+ * entra a la plataforma. La marca de "ya lo vio" vive en dos lados:
+ *  - localStorage (respuesta instantánea, y única fuente para anónimos)
+ *  - user_plans.tutorial_done en Supabase (sobrevive upgrades de versión,
+ *    cambios de dispositivo y limpiezas de cache)
+ * Después solo se abre de forma optativa desde el menú (❓ Tutorial).
+ */
 export const useShouldShowTutorial = () => {
   const [show, setShow] = useState(false);
+
   useEffect(() => {
-    const done = localStorage.getItem(TUTORIAL_KEY);
-    if (!done) setShow(true);
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        if (localStorage.getItem(TUTORIAL_KEY)) return; // ya visto en este dispositivo
+      } catch { return; }
+
+      // Chequear server-side antes de mostrar (evita re-mostrar tras un wipe)
+      if (isSupabaseReady()) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const { data } = await supabase.rpc('get_tutorial_done');
+            if (data === true) {
+              try { localStorage.setItem(TUTORIAL_KEY, 'true'); } catch { /* noop */ }
+              return;
+            }
+          }
+        } catch { /* si falla el server, caemos al comportamiento local */ }
+      }
+
+      if (!cancelled) setShow(true);
+    };
+
+    void check();
+    return () => { cancelled = true; };
   }, []);
+
   return { show, setShow };
+};
+
+/** Marca el tutorial como visto en localStorage + Supabase. */
+const markTutorialDone = () => {
+  try { localStorage.setItem(TUTORIAL_KEY, 'true'); } catch { /* noop */ }
+  if (isSupabaseReady()) {
+    void supabase.rpc('set_tutorial_done').then(
+      () => {},
+      () => {},
+    );
+  }
 };
 
 export const TutorialOverlay = ({ onClose }: { onClose: () => void }) => {
@@ -114,13 +204,13 @@ export const TutorialOverlay = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleFinish = () => {
-    localStorage.setItem(TUTORIAL_KEY, 'true');
+    markTutorialDone();
     onClose();
     navigate('/app');
   };
 
   const handleSkip = () => {
-    localStorage.setItem(TUTORIAL_KEY, 'true');
+    markTutorialDone();
     onClose();
   };
 
@@ -148,12 +238,17 @@ export const TutorialOverlay = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 md:p-8 text-center space-y-4">
+        <div className="p-6 md:p-8 text-center space-y-3">
           <div className="text-5xl mb-2">{current.icon}</div>
           <h2 className="text-xl md:text-2xl font-bold">{current.title}</h2>
           <p className="text-sm text-muted-fg leading-relaxed max-w-sm mx-auto">
             {current.description}
           </p>
+          {current.tip && (
+            <p className="text-[11px] text-muted-fg/80 leading-snug max-w-sm mx-auto border border-border bg-surface-2/60 rounded-md px-3 py-2">
+              💡 {current.tip}
+            </p>
+          )}
         </div>
 
         {/* Step indicator dots */}

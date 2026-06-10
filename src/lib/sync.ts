@@ -499,13 +499,30 @@ async function downloadFromServer(uid: string): Promise<void> {
     const local = useMatchStore.getState();
     const localIds = new Set(local.completed.map((m) => m.id));
     const newOnes: MatchSummary[] = [];
+    // ⚠️ Reconciliación: si el match ya existe localmente pero el server tiene
+    // otro marcador/metadata (ej: corrección hecha en la base, o copia local
+    // podrida por el viejo bug multi-tab), el server gana. Antes este caso se
+    // salteaba con continue y las correcciones nunca llegaban al cliente.
+    const updates = new Map<string, Partial<MatchSummary>>();
 
     for (const m of serverMatches) {
       const localId: string = m.local_id ?? m.id;
       if (localIds.has(localId)) {
         matchCache.set(localId, m.id);
-        for (const ev of (m.events ?? []).filter((e: any) => e.deleted_at == null)) {
+        const activeEvents = (m.events ?? []).filter((e: any) => e.deleted_at == null);
+        for (const ev of activeEvents) {
           if (ev.local_id) eventCache.add(ev.local_id);
+        }
+        const lm = local.completed.find((x) => x.id === localId);
+        if (lm) {
+          const patch: Partial<MatchSummary> = {};
+          if (lm.hs !== (m.home_score ?? 0)) patch.hs = m.home_score ?? 0;
+          if (lm.as !== (m.away_score ?? 0)) patch.as = m.away_score ?? 0;
+          if (lm.home !== m.home_name) patch.home = m.home_name;
+          if (lm.away !== m.away_name) patch.away = m.away_name;
+          if ((lm.date ?? null) !== (m.match_date ?? null)) patch.date = m.match_date ?? null;
+          if ((lm.competition ?? null) !== (m.competition ?? null)) patch.competition = m.competition ?? null;
+          if (Object.keys(patch).length > 0) updates.set(localId, patch);
         }
         continue;
       }
@@ -550,9 +567,12 @@ async function downloadFromServer(uid: string): Promise<void> {
       }
     }
 
-    if (newOnes.length > 0) {
-      console.log(`[sync] descargados ${newOnes.length} partidos del servidor`);
-      useMatchStore.setState({ completed: [...newOnes, ...local.completed] });
+    if (newOnes.length > 0 || updates.size > 0) {
+      if (newOnes.length > 0) console.log(`[sync] descargados ${newOnes.length} partidos del servidor`);
+      if (updates.size > 0) console.log(`[sync] reconciliados ${updates.size} partidos con datos del servidor`);
+      const current = useMatchStore.getState().completed;
+      const patched = current.map((cm) => updates.has(cm.id) ? { ...cm, ...updates.get(cm.id)! } : cm);
+      useMatchStore.setState({ completed: [...newOnes, ...patched] });
     }
 
     // Después de mergear, purgar todo lo que el server marcó como deleted.
@@ -651,10 +671,17 @@ export async function initSync(): Promise<void> {
   userId = uid;
   console.log('[sync] user:', uid);
 
-  // Bajar del servidor primero
-  await downloadTeamsFromServer(uid);
-  await downloadFromServer(uid);
-  await downloadLiveFromServer(uid);
+  // Bajar del servidor primero. Flag syncing → la UI muestra "cargando"
+  // en vez de listas vacías durante la primera descarga (fix: "Partidos
+  // aparecía vacío hasta refrescar").
+  useMatchStore.getState().setSyncing(true);
+  try {
+    await downloadTeamsFromServer(uid);
+    await downloadFromServer(uid);
+    await downloadLiveFromServer(uid);
+  } finally {
+    useMatchStore.getState().setSyncing(false);
+  }
 
   // Sync inicial
   await syncAll();

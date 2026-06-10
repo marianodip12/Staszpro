@@ -29,6 +29,7 @@ export const MatchesPage = () => {
   const completed   = useMatchStore((s) => s.completed);
   const startLive   = useMatchStore((s) => s.startLive);
   const removeCompleted = useMatchStore((s) => s.removeCompleted);
+  const syncing = useMatchStore((s) => s.syncing);
 
   const myTeamName = homeTeam?.name ?? 'Mi equipo';
   const liveScore = useMemo(() => computeScore(liveEvents), [liveEvents]);
@@ -110,7 +111,14 @@ export const MatchesPage = () => {
           />
         )}
 
-        {status === 'idle' && completed.length === 0 && (
+        {syncing && completed.length === 0 && (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-fg">
+            <span className="inline-block w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            Sincronizando tus partidos…
+          </div>
+        )}
+
+        {!syncing && status === 'idle' && completed.length === 0 && (
           teams.length === 0 ? (
             <EmptyState
               icon={<BallIcon />}
