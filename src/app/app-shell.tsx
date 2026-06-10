@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { usePlan } from '@/lib/use-plan';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/cn';
+import { trackVisit } from '@/lib/visits';
 import { TutorialOverlay, useShouldShowTutorial } from '@/features/tutorial/tutorial-overlay';
 import { SupportButton } from '@/components/support-button';
 import { BetaBanner } from '@/components/beta-banner';
@@ -24,6 +25,9 @@ export const AppShell = () => {
   const { plan } = usePlan();
   const { show: showTutorial, setShow: setShowTutorial } = useShouldShowTutorial();
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Registro de visita a la app (una por sesión de navegador)
+  useEffect(() => { void trackVisit('app'); }, []);
 
   // Check admin status
   useEffect(() => {

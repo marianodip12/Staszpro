@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { betaDaysLeft, usePlan } from '@/lib/use-plan';
+import { DonationDialog } from '@/components/donation-dialog';
 import { cn } from '@/lib/cn';
 
 const DISMISS_KEY = 'hp_beta_banner_dismissed';
@@ -19,6 +20,7 @@ interface BetaBannerProps {
 export const BetaBanner = ({ sticky = false, className }: BetaBannerProps) => {
   const { betaActive, betaUntil } = usePlan();
   const [dismissed, setDismissed] = useState(true); // empezamos oculto hasta chequear
+  const [donateOpen, setDonateOpen] = useState(false);
 
   useEffect(() => {
     if (!betaActive) {
@@ -69,6 +71,14 @@ export const BetaBanner = ({ sticky = false, className }: BetaBannerProps) => {
       <p className="flex-1 leading-snug text-fg">
         Estás usando StatzPro v11.1 en beta · <span className="text-muted-fg">Todas las features pagas están desbloqueadas por {days} días más</span>
       </p>
+      <button
+        type="button"
+        onClick={() => setDonateOpen(true)}
+        className="shrink-0 px-2.5 py-1 rounded-md bg-primary/20 hover:bg-primary/30 text-primary text-[11px] font-semibold transition-colors"
+      >
+        ☕ Apoyar
+      </button>
+      <DonationDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
       <button
         type="button"
         onClick={handleDismiss}
