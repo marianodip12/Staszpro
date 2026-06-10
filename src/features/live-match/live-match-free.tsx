@@ -155,22 +155,25 @@ export const LiveMatchFree = ({ modeSwitch }: LiveMatchFreeProps = {}) => {
       const { team } = pending;
       const name  = team === 'home' ? match.home : match.away;
       const color = team === 'home' ? match.homeColor : match.awayColor;
-      const { fieldPlayers } = splitRoster(teams.find((t) => t.name === name)?.players ?? []);
-      return { kind: 'shooter' as PickerKind, players: fieldPlayers, adhoc: adhocPlayersFor(events, team), color, name };
+      const teamObj = teams.find((t) => t.name === name);
+      const { fieldPlayers } = splitRoster(teamObj?.players ?? []);
+      return { kind: 'shooter' as PickerKind, teamId: teamObj?.id ?? null, players: fieldPlayers, adhoc: adhocPlayersFor(events, team), color, name };
     }
     if (pending.kind === 'shot_gk') {
       const gkTeam: Team = pending.team === 'home' ? 'away' : 'home';
       const name  = gkTeam === 'home' ? match.home : match.away;
       const color = gkTeam === 'home' ? match.homeColor : match.awayColor;
-      const { goalkeepers } = splitRoster(teams.find((t) => t.name === name)?.players ?? []);
-      return { kind: 'goalkeeper' as PickerKind, players: goalkeepers, adhoc: adhocGKFor(events, pending.team), color, name };
+      const teamObj = teams.find((t) => t.name === name);
+      const { goalkeepers } = splitRoster(teamObj?.players ?? []);
+      return { kind: 'goalkeeper' as PickerKind, teamId: teamObj?.id ?? null, players: goalkeepers, adhoc: adhocGKFor(events, pending.team), color, name };
     }
     if (pending.kind === 'tagged') {
       const { type, team } = pending;
       const name  = team === 'home' ? match.home : match.away;
       const color = team === 'home' ? match.homeColor : match.awayColor;
       const kind: PickerKind = rosterKindFor(type) === 'sanctioned' ? 'sanctioned' : 'shooter';
-      return { kind, players: teams.find((t) => t.name === name)?.players ?? [], adhoc: adhocPlayersFor(events, team), color, name };
+      const teamObj = teams.find((t) => t.name === name);
+      return { kind, teamId: teamObj?.id ?? null, players: teamObj?.players ?? [], adhoc: adhocPlayersFor(events, team), color, name };
     }
     return null;
   }, [pending, match, teams, events]);
@@ -327,7 +330,7 @@ export const LiveMatchFree = ({ modeSwitch }: LiveMatchFreeProps = {}) => {
 
       {pickerCtx && (
         <PlayerPicker open onClose={() => setPending(null)} onPick={handlePick}
-          players={pickerCtx.players} adhocPlayers={pickerCtx.adhoc}
+          players={pickerCtx.players} teamId={pickerCtx.teamId} adhocPlayers={pickerCtx.adhoc}
           teamColor={pickerCtx.color} teamName={pickerCtx.name}
           kind={pickerCtx.kind} allowSkip />
       )}

@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import type { CourtZoneId, PersonRef, Player } from '@/domain/types';
 import { recommendedPlayersForZone } from '@/domain/recommendations';
+import { POSITIONS } from '@/domain/constants';
+import { newId } from '@/domain/teams';
+import { useMatchStore } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
 export type PickerKind = 'shooter' | 'goalkeeper' | 'sanctioned';
@@ -22,6 +25,13 @@ export interface PlayerPickerProps {
   adhocPlayers?: PersonRef[];
   teamColor: string;
   teamName: string;
+  /**
+   * Si el equipo está registrado (existe en el store), su id. Cuando se
+   * agrega un jugador nuevo desde el picker en pleno partido, se persiste
+   * al roster con upsertPlayer → aparece en la lista de seleccionables
+   * inmediatamente y queda guardado para los próximos partidos.
+   */
+  teamId?: string | null;
   kind: PickerKind;
   allowSkip?: boolean;
   /**
@@ -40,19 +50,24 @@ export const PlayerPicker = ({
   adhocPlayers = [],
   teamColor,
   teamName,
+  teamId = null,
   kind,
   allowSkip = true,
   priorityZone = null,
 }: PlayerPickerProps) => {
   const t = useT();
+  const upsertPlayer = useMatchStore((s) => s.upsertPlayer);
   const [freeNumber, setFreeNumber] = useState('');
   const [freeName, setFreeName] = useState('');
+  const [freePosition, setFreePosition] = useState<string>('');
 
   useEffect(() => {
     if (!open) return;
     setFreeNumber('');
     setFreeName('');
-  }, [open]);
+    // Default razonable según el contexto del picker
+    setFreePosition(kind === 'goalkeeper' ? 'Arquero' : 'Campo');
+  }, [open, kind]);
 
   // For shooters with a known throw zone, split into recommended + rest.
   // For other kinds (gk/sanctioned), skip recommendations.
@@ -98,7 +113,23 @@ export const PlayerPicker = ({
   const handleFreeText = () => {
     const n = Number(freeNumber);
     if (!Number.isFinite(n) || n < 1 || n > 99) return;
-    onPick({ name: freeName.trim() || `#${n}`, number: n });
+    const name = freeName.trim() || `#${n}`;
+
+    // ⚠️ FIX: si el equipo está registrado, el jugador nuevo se PERSISTE al
+    // roster (antes solo se taggeaba el evento y desaparecía de la lista).
+    if (teamId) {
+      const already = players.find((p) => p.number === n);
+      if (!already) {
+        upsertPlayer(teamId, {
+          id: newId(),
+          name,
+          number: n,
+          position: freePosition || 'Campo',
+        });
+      }
+    }
+
+    onPick({ name, number: n });
   };
 
   const hasRoster = players.length > 0;
@@ -181,6 +212,9 @@ export const PlayerPicker = ({
                 />
               </div>
             </div>
+            {teamId && (
+              <PositionChips value={freePosition} onChange={setFreePosition} kind={kind} />
+            )}
             <Button onClick={handleFreeText} disabled={!freeNumber} className="mt-2 w-full" variant="secondary">
               {t.picker_add}
             </Button>
@@ -234,6 +268,9 @@ export const PlayerPicker = ({
                 />
               </div>
             </div>
+            {teamId && (
+              <PositionChips value={freePosition} onChange={setFreePosition} kind={kind} />
+            )}
             <Button onClick={handleFreeText} disabled={!freeNumber} className="mt-2 w-full">
               {t.picker_add}
             </Button>
@@ -250,6 +287,45 @@ export const PlayerPicker = ({
         )}
       </DialogFooter>
     </Dialog>
+  );
+};
+
+/** Chips de posición para el alta rápida en pleno partido. */
+const PositionChips = ({
+  value,
+  onChange,
+  kind,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  kind: PickerKind;
+}) => {
+  // Para arquero, mostramos Arquero primero; para el resto, Campo primero.
+  const ordered = kind === 'goalkeeper'
+    ? POSITIONS
+    : [...POSITIONS.filter((p) => p === 'Campo'), ...POSITIONS.filter((p) => p !== 'Campo')];
+
+  return (
+    <div className="mt-2">
+      <Label>Posición</Label>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {ordered.map((pos) => (
+          <button
+            key={pos}
+            type="button"
+            onClick={() => onChange(pos)}
+            className={cn(
+              'px-2 py-1 rounded-md border text-[10px] font-medium transition-colors',
+              value === pos
+                ? 'border-primary bg-primary/15 text-primary'
+                : 'border-border bg-surface-2 text-muted-fg hover:border-primary/50',
+            )}
+          >
+            {pos}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 };
 

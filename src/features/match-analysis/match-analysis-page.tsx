@@ -28,6 +28,7 @@ import { COURT_ZONES, EVENT_TYPES, GOAL_QUADRANTS } from '@/domain/constants';
 import { computeMatchStats } from '@/domain/stats';
 import type { CourtZoneId, GoalQuadrantId, HandballEvent } from '@/domain/types';
 import { selectHomeTeam, useMatchStore } from '@/lib/store';
+import { softDeleteEventRemote } from '@/lib/sync';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { PlayersPanel } from './players-panel';
@@ -561,7 +562,7 @@ export const MatchAnalysisPage = ({ externalMatch, readonly = false }: MatchAnal
               events={match.events}
               homeColor={match.homeColor}
               awayColor={match.awayColor}
-              onDelete={(eventId) => removeCompletedEvent(match.id, eventId)}
+              onDelete={(eventId) => { removeCompletedEvent(match.id, eventId); void softDeleteEventRemote(eventId); }}
               onEdit={(ev) => setEditingEvent(ev)}
             />
           </>
@@ -581,6 +582,7 @@ export const MatchAnalysisPage = ({ externalMatch, readonly = false }: MatchAnal
         onDelete={() => {
           if (!editingEvent) return;
           removeCompletedEvent(match.id, editingEvent.id);
+          void softDeleteEventRemote(editingEvent.id);
         }}
       />
 

@@ -345,6 +345,7 @@ const LiveMatchPagePro = () => {
       return {
         open: true,
         kind: 'shooter' as PickerKind,
+        teamId: teamObj?.id ?? null,
         players: fieldPlayers,
         adhocPlayers: adhoc,
         teamColor: d.team === 'home' ? match.homeColor : match.awayColor,
@@ -366,6 +367,7 @@ const LiveMatchPagePro = () => {
       return {
         open: true,
         kind: 'goalkeeper' as PickerKind,
+        teamId: teamObj?.id ?? null,
         players: goalkeepers,
         adhocPlayers: adhocGoalkeepersFor(events, gkTeam),
         teamColor: gkColor,
@@ -384,6 +386,7 @@ const LiveMatchPagePro = () => {
       return {
         open: true,
         kind: 'sanctioned' as PickerKind,
+        teamId: teamObj?.id ?? null,
         players,
         adhocPlayers: adhoc,
         teamColor: team === 'home' ? match.homeColor : match.awayColor,
@@ -706,6 +709,7 @@ const LiveMatchPagePro = () => {
           }}
           onPick={pickerContext.onPick}
           players={pickerContext.players}
+          teamId={pickerContext.teamId}
           adhocPlayers={pickerContext.adhocPlayers}
           teamColor={pickerContext.teamColor}
           teamName={pickerContext.teamName}

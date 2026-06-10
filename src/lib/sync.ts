@@ -110,7 +110,22 @@ async function syncPlayer(player: Player, teamDbId: string, uid: string): Promis
 async function syncMatch(match: MatchSummary, uid: string): Promise<string | null> {
   if (matchCache.has(match.id)) {
     const dbId = matchCache.get(match.id);
-    if (dbId) { await syncEventsFor(match.events, dbId, uid); return dbId; }
+    if (dbId) {
+      // ⚠️ Aún con cache, verificar tombstone: otra pestaña/dispositivo pudo
+      // haber borrado este match después de que esta pestaña lo cacheó.
+      const { data: row } = await supabase
+        .from('matches').select('deleted_at').eq('id', dbId).maybeSingle();
+      if (row?.deleted_at) {
+        matchCache.delete(match.id);
+        const local = useMatchStore.getState();
+        useMatchStore.setState({
+          completed: local.completed.filter((m) => m.id !== match.id),
+        });
+        return null;
+      }
+      await syncEventsFor(match.events, dbId, uid);
+      return dbId;
+    }
   }
 
   try {
@@ -265,6 +280,12 @@ function computeRunningScore(events: HandballEvent[]): { h: number; a: number } 
 // ============================================================================
 async function syncAll() {
   if (!userId) return;
+  // ⚠️ PRIMERO purgar tombstones del server. Esto corre en CADA ciclo de sync,
+  // no solo al inicio: así una pestaña vieja con un match borrado en otra
+  // pestaña/dispositivo lo purga de su store antes de intentar re-subirlo.
+  await purgeLocalDeletedTeams(userId);
+  await purgeLocalDeletedMatches();
+
   const state = useMatchStore.getState();
   for (const team of state.teams) await syncTeam(team, userId);
   for (const match of state.completed) await syncMatch(match, userId);
@@ -646,6 +667,23 @@ export async function initSync(): Promise<void> {
       syncAll().catch((e) => console.warn('[sync] err:', e));
     }, 1500);
   });
+
+  // ⚠️ MULTI-TAB FIX: zustand/persist solo lee localStorage al hidratar.
+  // Si otra pestaña escribe (ej: borra un partido), esta pestaña seguía con
+  // su estado viejo en memoria y al próximo set lo RE-ESCRIBÍA al storage,
+  // resucitando el partido. Escuchamos el evento `storage` (solo dispara en
+  // las OTRAS pestañas) y rehidratamos con debounce.
+  if (typeof window !== 'undefined') {
+    let rehydrateTimer: ReturnType<typeof setTimeout> | null = null;
+    window.addEventListener('storage', (e) => {
+      if (e.key !== 'handball-pro-v11') return;
+      if (rehydrateTimer) clearTimeout(rehydrateTimer);
+      rehydrateTimer = setTimeout(() => {
+        console.log('[sync] cambio en otra pestaña, rehidratando store');
+        void useMatchStore.persist.rehydrate();
+      }, 300);
+    });
+  }
 
   console.log('[sync] activado ✓');
 }
