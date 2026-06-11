@@ -74,9 +74,9 @@ export const BetaBanner = ({ sticky = false, className }: BetaBannerProps) => {
       <button
         type="button"
         onClick={() => setDonateOpen(true)}
-        className="shrink-0 px-2.5 py-1 rounded-md bg-primary/20 hover:bg-primary/30 text-primary text-[11px] font-semibold transition-colors"
+        className="shrink-0 px-3 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 text-[11px] font-bold transition-colors shadow-[0_0_12px_rgba(245,158,11,0.25)]"
       >
-        ☕ Apoyar
+        💛 Donar
       </button>
       <DonationDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
       <button
