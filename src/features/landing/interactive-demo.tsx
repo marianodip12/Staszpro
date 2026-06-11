@@ -326,12 +326,12 @@ const CompleteModeDemo = () => {
         <DemoStat label={t.landing_demo_summary_pct}   value={`${stats.pct}%`} color="#3b82f6" />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-2 gap-5 items-start">
         <section>
           <p className="text-xs font-semibold text-muted-fg uppercase tracking-wider mb-2">
             1. {t.landing_demo_goal_label}
           </p>
-          <div className="max-w-[260px] mx-auto">
+          <div className="max-w-[340px] mx-auto">
             <GoalGrid
               selected={draftGoal}
               onSelect={(z) => setDraftGoal(draftGoal === z ? null : z)}
@@ -343,7 +343,9 @@ const CompleteModeDemo = () => {
           <p className="text-xs font-semibold text-muted-fg uppercase tracking-wider mb-2">
             2. {t.landing_demo_court_label}
           </p>
-          <div className="max-w-[280px] mx-auto">
+          {/* Igual que en la sección "Modos": media cancha apaisada con
+              marco azul degradé. CourtView mantiene su proporción real. */}
+          <div className="max-w-[340px] mx-auto rounded-lg border border-blue-700/30 bg-gradient-to-b from-blue-950/40 to-blue-900/20 p-2 overflow-hidden">
             <CourtView
               selectedZone={draftCourt}
               onZoneSelect={(z) => setDraftCourt(draftCourt === z ? null : z)}

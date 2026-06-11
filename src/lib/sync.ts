@@ -11,6 +11,7 @@
  */
 
 import { ensureAnonSession, isSupabaseReady, supabase } from './supabase';
+import { seedForUser } from './seed';
 import { useMatchStore } from './store';
 import type { HandballEvent, HandballTeam, MatchSummary, Player } from '@/domain/types';
 
@@ -652,6 +653,26 @@ async function purgeLocalDeletedMatches(): Promise<void> {
 // ============================================================================
 // PUBLIC API
 // ============================================================================
+/**
+ * Descarga inicial completa para un usuario + seed si la cuenta está vacía.
+ * Se usa en el boot y cada vez que cambia la sesión (login/cambio de cuenta).
+ */
+async function bootstrapForUser(uid: string): Promise<void> {
+  useMatchStore.getState().setSyncing(true);
+  try {
+    await downloadTeamsFromServer(uid);
+    await downloadFromServer(uid);
+    await downloadLiveFromServer(uid);
+    // Cuenta vacía (usuario nuevo) → equipos demo + partido demo del tutorial.
+    // El flag es POR USUARIO: cada cuenta nueva recibe su demo aunque este
+    // navegador ya haya sembrado para otra.
+    seedForUser(uid, useMatchStore.getState());
+  } finally {
+    useMatchStore.getState().setSyncing(false);
+  }
+  await syncAll();
+}
+
 export async function initSync(): Promise<void> {
   if (initialized) return;
   initialized = true;
@@ -671,20 +692,29 @@ export async function initSync(): Promise<void> {
   userId = uid;
   console.log('[sync] user:', uid);
 
-  // Bajar del servidor primero. Flag syncing → la UI muestra "cargando"
-  // en vez de listas vacías durante la primera descarga (fix: "Partidos
-  // aparecía vacío hasta refrescar").
-  useMatchStore.getState().setSyncing(true);
-  try {
-    await downloadTeamsFromServer(uid);
-    await downloadFromServer(uid);
-    await downloadLiveFromServer(uid);
-  } finally {
-    useMatchStore.getState().setSyncing(false);
-  }
+  await bootstrapForUser(uid);
 
-  // Sync inicial
-  await syncAll();
+  // ⚠️ FIX "inicio sesión y no veo mis partidos hasta refrescar":
+  // initSync corre UNA vez al boot. Si el usuario después se loguea
+  // (anónimo → cuenta real, o cambia de cuenta), nadie volvía a bajar
+  // los datos del usuario nuevo. Escuchamos los cambios de sesión y
+  // re-bootstrapeamos con caches y store limpios.
+  supabase.auth.onAuthStateChange((event, session) => {
+    const newUid = session?.user?.id ?? null;
+    if (event === 'SIGNED_IN' && newUid && newUid !== userId) {
+      console.log('[sync] cambio de usuario, re-bootstrap:', newUid);
+      userId = newUid;
+      // Limpiar caches y datos locales del usuario anterior para no
+      // contaminar la cuenta nueva con equipos/partidos ajenos.
+      teamCache.clear(); playerCache.clear(); matchCache.clear(); eventCache.clear();
+      useMatchStore.getState().closeLive();
+      useMatchStore.setState({ teams: [], completed: [] });
+      void bootstrapForUser(newUid);
+    }
+    if (event === 'SIGNED_OUT') {
+      userId = null;
+    }
+  });
 
   // Subscribirse a cambios del store con debounce
   let timer: ReturnType<typeof setTimeout> | null = null;

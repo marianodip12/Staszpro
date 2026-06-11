@@ -15,8 +15,13 @@ import { initSync } from './lib/sync';
 import './styles/globals.css';
 
 
-// Seed default teams on first boot (idempotent).
-seedDefaultTeams(useMatchStore.getState());
+// Seed: ahora corre POR USUARIO dentro de initSync, después de la descarga
+// inicial (así una cuenta nueva recibe el demo aunque este navegador ya haya
+// sembrado para otra). El seed global solo queda como fallback sin Supabase.
+import { isSupabaseReady } from './lib/supabase';
+if (!isSupabaseReady()) {
+  seedDefaultTeams(useMatchStore.getState());
+}
 
 // Optional: ?demo=sim → inject a fully simulated 60' match once.
 if (new URLSearchParams(location.search).get('demo') === 'sim') {

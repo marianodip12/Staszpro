@@ -20,6 +20,26 @@ const SEED_DONE_KEY = 'hp_seed_done_v1';
  *    store esté vacío (eso es lo que rompía: wipe + reseed + sync subía dups).
  *  - Si no hay teams Y nunca se sembró → seed + marcar flag.
  */
+/**
+ * Seed POR USUARIO: corre después de la descarga inicial del server.
+ * Si el usuario no tiene nada (ni equipos ni partidos en el server),
+ * le sembramos los equipos demo + el partido demo del tutorial.
+ * Flag por uid → cada cuenta nueva recibe su demo aunque el navegador
+ * ya haya sembrado para otra cuenta.
+ */
+export const seedForUser = (uid: string, store: StoreState): void => {
+  if (store.teams.length > 0 || store.completed.length > 0) return;
+
+  const key = `hp_seed_done_${uid}`;
+  try {
+    if (localStorage.getItem(key) === '1') return;
+  } catch { return; }
+
+  store.setTeams(buildDemoTeams());
+  store.addCompleted(buildDemoMatch());
+  try { localStorage.setItem(key, '1'); } catch { /* noop */ }
+};
+
 export const seedDefaultTeams = (store: StoreState): void => {
   if (store.teams.length > 0) return;
 
@@ -30,7 +50,15 @@ export const seedDefaultTeams = (store: StoreState): void => {
     return;
   }
 
-  const teams: HandballTeam[] = [
+  const teams: HandballTeam[] = buildDemoTeams();
+
+  store.setTeams(teams);
+  store.addCompleted(buildDemoMatch());
+  try { localStorage.setItem(SEED_DONE_KEY, '1'); } catch { /* noop */ }
+};
+
+function buildDemoTeams(): HandballTeam[] {
+  return [
     {
       id: 'team-demo-1',
       name: 'Mi Equipo',
@@ -46,18 +74,9 @@ export const seedDefaultTeams = (store: StoreState): void => {
         { id: 'p-1-8', name: 'Pivote',      number: 9,  position: 'Pivote' },
       ],
     },
-    {
-      id: 'team-demo-2',
-      name: 'Rival Ejemplo',
-      color: '#EF4444',
-      players: [],
-    },
+    { id: 'team-demo-2', name: 'Rival Ejemplo', color: '#EF4444', players: [] },
   ];
-
-  store.setTeams(teams);
-  store.addCompleted(buildDemoMatch());
-  try { localStorage.setItem(SEED_DONE_KEY, '1'); } catch { /* noop */ }
-};
+}
 
 /** Id fijo del partido demo — el tutorial navega a su análisis. */
 export const DEMO_MATCH_ID = 'match-demo-1';
