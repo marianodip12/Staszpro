@@ -8,6 +8,8 @@ import { usePlan } from '@/lib/use-plan';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/cn';
 import { trackVisit } from '@/lib/visits';
+import { ChangePasswordDialog } from '@/components/change-password-dialog';
+import { DonationDialog } from '@/components/donation-dialog';
 import { TutorialOverlay, useShouldShowTutorial } from '@/features/tutorial/tutorial-overlay';
 import { SupportButton } from '@/components/support-button';
 import { BetaBanner } from '@/components/beta-banner';
@@ -27,6 +29,9 @@ export const AppShell = () => {
 
   // Registro de visita a la app (una por sesión de navegador)
   useEffect(() => { void trackVisit('app'); }, []);
+
+  const [changePassOpen, setChangePassOpen] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
 
   // Check admin status
   useEffect(() => {
@@ -188,6 +193,16 @@ export const AppShell = () => {
           {/* Admin plan preview selector */}
           {isAdmin && <AdminPlanPreview />}
 
+          {/* 💛 Donar — llamativo, abre el diálogo de donación */}
+          <button
+            type="button"
+            onClick={() => setDonateOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/40 hover:bg-amber-500/20 transition-colors mt-1 animate-pulse-slow"
+          >
+            💛 <span>Donar</span>
+            <span className="ml-auto text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 rounded px-1.5 py-0.5">Beta</span>
+          </button>
+
           {/* Replay tutorial */}
           <button
             type="button"
@@ -223,13 +238,22 @@ export const AppShell = () => {
               </div>
               <button
                 type="button"
+                onClick={() => setChangePassOpen(true)}
+                className="mt-2 w-full text-[10px] py-1.5 rounded border border-border bg-bg hover:bg-surface text-muted-fg hover:text-fg transition-colors"
+              >
+                🔒 Cambiar contraseña
+              </button>
+              <button
+                type="button"
                 onClick={handleSignOut}
-                className="mt-2 w-full text-[10px] py-1.5 rounded border border-border bg-bg hover:bg-surface text-muted-fg hover:text-danger transition-colors"
+                className="mt-1.5 w-full text-[10px] py-1.5 rounded border border-border bg-bg hover:bg-surface text-muted-fg hover:text-danger transition-colors"
               >
                 {t.auth_signout}
               </button>
             </div>
           )}
+          <ChangePasswordDialog open={changePassOpen} onClose={() => setChangePassOpen(false)} />
+          <DonationDialog open={donateOpen} onClose={() => setDonateOpen(false)} />
         </div>
       </nav>
 

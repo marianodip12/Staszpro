@@ -13,6 +13,7 @@ import { SharePage } from '@/features/share/share-page';
 import { SharedAnalysisPage } from '@/features/video-analysis/shared-analysis-page';
 import { LandingPage } from '@/features/landing/landing-page';
 import { AuthPage } from '@/features/auth/auth-page';
+import { ResetPasswordPage } from '@/features/auth/reset-password-page';
 import { AdminPage } from '@/features/admin/admin-page';
 import { PlansPage } from '@/features/billing/plans-page';
 import { BillingReturnPage } from '@/features/billing/billing-return-page';
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
   { path: '/login', element: <AuthPage mode="signin" /> },
   { path: '/signup', element: <AuthPage mode="signup" /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/share/:token', element: <SharePage /> },
   { path: '/share-analysis/:token', element: <SharedAnalysisPage /> },
 

@@ -19,6 +19,27 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  const handleForgotPassword = async () => {
+    setError(null);
+    if (!email.trim() || !email.includes('@')) {
+      setError('Escribí tu email arriba y volvé a tocar "¿Olvidaste tu contraseña?"');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (err) { setError(err.message); return; }
+      setResetSent(true);
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   // If already logged in, redirect to /app
   if (isAuthenticated) {
@@ -106,9 +127,7 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
     <div className="min-h-screen bg-bg text-fg flex flex-col">
       <header className="px-4 md:px-6 h-14 flex items-center border-b border-border">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-primary grid place-items-center text-[11px] font-semibold text-primary-fg">
-            HP
-          </div>
+          <img src="/statzpro-favicon.svg" alt="StatzPro" className="w-7 h-7 rounded-md" />
           <span className="text-sm font-semibold tracking-tight">StatzPro</span>
         </Link>
       </header>
@@ -159,6 +178,23 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
               />
               {mode === 'signup' && (
                 <p className="text-[11px] text-muted-fg mt-1">{t.auth_password_help}</p>
+              )}
+              {mode === 'signin' && (
+                <div className="mt-1.5 text-right">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={resetLoading}
+                    className="text-[11px] text-primary hover:underline disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Enviando…' : '¿Olvidaste tu contraseña?'}
+                  </button>
+                </div>
+              )}
+              {resetSent && (
+                <p className="mt-1.5 text-[11px] text-goal bg-goal/10 border border-goal/30 rounded-md px-2.5 py-1.5">
+                  📩 Te mandamos un mail con el link para crear una contraseña nueva. Revisá spam si no aparece.
+                </p>
               )}
             </div>
 
