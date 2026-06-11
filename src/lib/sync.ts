@@ -328,11 +328,15 @@ async function downloadTeamsFromServer(uid: string): Promise<void> {
     const local = useMatchStore.getState();
     const localTeamIds = new Set(local.teams.map((t) => t.id));
     const newTeams: HandballTeam[] = [];
+    // ⚠️ Reconciliación de planteles: si el equipo ya existe localmente,
+    // antes se salteaba con continue y los jugadores que estuvieran en el
+    // server (ej: restauraciones o ediciones desde otro dispositivo) nunca
+    // bajaban. Ahora hacemos unión por número de camiseta: entran los del
+    // server que faltan localmente y se conservan los locales sin subir.
+    const rosterUpdates = new Map<string, Player[]>();
 
     for (const [localId, t] of byLocalId) {
-      if (localTeamIds.has(localId)) continue;
-
-      const players: Player[] = (t.players ?? [])
+      const serverPlayers: Player[] = (t.players ?? [])
         .filter((p: any) => p.deleted_at == null)  // ⚠️ ignorar players eliminados
         .map((p: any): Player => {
           if (p.local_id) playerCache.set(p.local_id, p.id);
@@ -344,20 +348,37 @@ async function downloadTeamsFromServer(uid: string): Promise<void> {
           };
         });
 
+      if (localTeamIds.has(localId)) {
+        const lt = local.teams.find((x) => x.id === localId);
+        if (lt) {
+          const localNumbers = new Set(lt.players.map((p) => p.number));
+          const missing = serverPlayers.filter((p) => !localNumbers.has(p.number));
+          if (missing.length > 0) {
+            rosterUpdates.set(localId, [...lt.players, ...missing].sort((a, b) => a.number - b.number));
+          }
+        }
+        continue;
+      }
+
       newTeams.push({
         id: localId,
         name: t.name,
         color: t.color ?? '#3B82F6',
-        players,
+        players: serverPlayers,
       });
     }
 
-    if (newTeams.length > 0) {
-      console.log(`[sync] descargados ${newTeams.length} equipos del servidor`);
-      const merged = [...newTeams, ...local.teams];
+    if (newTeams.length > 0 || rosterUpdates.size > 0) {
+      if (newTeams.length > 0) console.log(`[sync] descargados ${newTeams.length} equipos del servidor`);
+      if (rosterUpdates.size > 0) console.log(`[sync] planteles reconciliados: ${rosterUpdates.size} equipos`);
+      const current = useMatchStore.getState();
+      const patchedLocal = current.teams.map((tm) =>
+        rosterUpdates.has(tm.id) ? { ...tm, players: rosterUpdates.get(tm.id)! } : tm,
+      );
+      const merged = [...newTeams, ...patchedLocal];
       useMatchStore.setState({
         teams: merged,
-        selectedTeamId: local.selectedTeamId ?? merged[0]?.id ?? null,
+        selectedTeamId: current.selectedTeamId ?? merged[0]?.id ?? null,
       });
     }
   } catch (e) { console.warn('[sync] downloadTeams:', e); }
