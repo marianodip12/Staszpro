@@ -137,7 +137,7 @@ export interface SeasonPoint {
   runningWins: number;          // cumulative wins up to and including this match
   runningDraws: number;
   runningLosses: number;
-  runningPoints: number;        // 3W + 1D
+  runningPoints: number;        // Sistema liga: W=3, E=2, P=1
 }
 
 /**
@@ -169,7 +169,7 @@ export const seasonTimeline = (
       runningWins: w,
       runningDraws: d,
       runningLosses: l,
-      runningPoints: w * 3 + d,
+      runningPoints: w * 3 + d * 2 + l,
     };
   });
 };
@@ -212,7 +212,7 @@ export const seasonTotals = (
     goalsFor: gf,
     goalsAgainst: ga,
     goalDiff: gf - ga,
-    points: w * 3 + d,
+    points: w * 3 + d * 2 + l,
     avgFor: played === 0 ? 0 : Math.round((gf / played) * 10) / 10,
     avgAgainst: played === 0 ? 0 : Math.round((ga / played) * 10) / 10,
   };

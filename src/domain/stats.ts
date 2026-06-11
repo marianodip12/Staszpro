@@ -257,7 +257,7 @@ export interface SeasonStats {
   l: number;                 // losses
   gf: number;                // goals for
   ga: number;                // goals against
-  pts: number;               // 2W + 1D (local handball rule in the original app)
+  pts: number;               // Sistema liga: W=3, E=2, P=1
   total: number;             // total matches
 }
 
@@ -278,5 +278,5 @@ export const buildSeasonStats = (
     else if (myG === oppG) d++;
     else l++;
   }
-  return { w, d, l, gf, ga, pts: w * 2 + d, total: w + d + l };
+  return { w, d, l, gf, ga, pts: w * 3 + d * 2 + l, total: w + d + l };
 };

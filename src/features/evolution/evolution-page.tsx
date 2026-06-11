@@ -198,6 +198,9 @@ const SeasonView = ({ matches, myTeamName, myColor, onOpenMatch }: {
         </CardContent>
       </Card>
 
+      {/* Goleadores y arqueros de la temporada */}
+      <SeasonLeaders matches={matches} myTeamName={myTeamName} myColor={myColor} />
+
       {/* Match list */}
       <div>
         <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-fg mb-1.5">
@@ -486,14 +489,14 @@ const DiffBarChart = ({
   myColor: string;
 }) => {
   if (timeline.length === 0) return null;
-  const width = 320, height = 110, padX = 16, padY = 12;
+  const width = 320, height = 90, padX = 16, padY = 12;
   const absMax = Math.max(3, ...timeline.map((p) => Math.abs(p.diff)));
   const slot = (width - padX * 2) / timeline.length;
   const mid = height / 2;
   const scaleY = (v: number) => mid - (v / absMax) * (mid - padY);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" role="img">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-md mx-auto h-auto block" role="img">
       <line
         x1={padX} x2={width - padX}
         y1={mid} y2={mid}
@@ -502,8 +505,10 @@ const DiffBarChart = ({
         strokeWidth={0.5}
       />
       {timeline.map((p) => {
-        const x = padX + slot * (p.index - 1) + slot * 0.15;
-        const w = slot * 0.7;
+        // ⚠️ Cap del ancho de barra: con 1-2 partidos la barra ocupaba toda
+        // la pantalla. Máximo 36px de viewBox, centrada en su slot.
+        const w = Math.min(slot * 0.7, 36);
+        const x = padX + slot * (p.index - 1) + (slot - w) / 2;
         const y = p.diff >= 0 ? scaleY(p.diff) : mid;
         const h = Math.abs(scaleY(p.diff) - mid);
         const fill = p.diff >= 0 ? myColor : '#EF6461';
@@ -536,7 +541,7 @@ const PointsLine = ({
   const path = timeline.map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.index)} ${scaleY(p.runningPoints)}`).join(' ');
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" role="img">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full max-w-md mx-auto h-auto block" role="img">
       <path d={path} fill="none" stroke={myColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       {timeline.map((p) => (
         <circle key={p.index} cx={scaleX(p.index)} cy={scaleY(p.runningPoints)} r={2.5} fill={myColor} />
@@ -622,4 +627,98 @@ const sortableDate = (d: string): number => {
   const [dd, mm] = d.split('/').map((x) => parseInt(x, 10));
   if (Number.isNaN(dd) || Number.isNaN(mm)) return 0;
   return mm * 100 + dd;
+};
+
+
+// ─── Goleadores y arqueros de la temporada ────────────────────────────
+const SeasonLeaders = ({ matches, myTeamName, myColor }: {
+  matches: MatchSummary[]; myTeamName: string; myColor: string;
+}) => {
+  const { scorers, keepers } = useMemo(() => {
+    const goals = new Map<string, { name: string; number: number | null; goals: number; shots: number }>();
+    const saves = new Map<string, { name: string; number: number | null; saves: number }>();
+
+    for (const m of matches) {
+      const mySide = m.home === myTeamName ? 'home' : m.away === myTeamName ? 'away' : null;
+      if (!mySide) continue;
+      for (const e of m.events) {
+        // Tiros y goles de mi equipo
+        if (e.team === mySide && ['goal', 'saved', 'miss', 'post'].includes(e.type) && e.shooter?.name) {
+          const key = `${e.shooter.number ?? ''}|${e.shooter.name.toLowerCase()}`;
+          const cur = goals.get(key) ?? { name: e.shooter.name, number: e.shooter.number ?? null, goals: 0, shots: 0 };
+          cur.shots++;
+          if (e.type === 'goal') cur.goals++;
+          goals.set(key, cur);
+        }
+        // Atajadas de mis arqueros = tiros del rival con resultado atajada
+        if (e.team !== mySide && e.type === 'saved' && e.goalkeeper?.name) {
+          const key = `${e.goalkeeper.number ?? ''}|${e.goalkeeper.name.toLowerCase()}`;
+          const cur = saves.get(key) ?? { name: e.goalkeeper.name, number: e.goalkeeper.number ?? null, saves: 0 };
+          cur.saves++;
+          saves.set(key, cur);
+        }
+      }
+    }
+
+    return {
+      scorers: [...goals.values()].filter((p) => p.goals > 0).sort((a, b) => b.goals - a.goals).slice(0, 8),
+      keepers: [...saves.values()].sort((a, b) => b.saves - a.saves).slice(0, 3),
+    };
+  }, [matches, myTeamName]);
+
+  if (scorers.length === 0 && keepers.length === 0) return null;
+
+  const maxGoals = Math.max(1, ...scorers.map((p) => p.goals));
+
+  return (
+    <div className="grid md:grid-cols-2 gap-3">
+      {scorers.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-fg mb-2">
+              ⚽ Goleadores
+            </div>
+            <div className="space-y-1.5">
+              {scorers.map((p) => (
+                <div key={`${p.number}-${p.name}`} className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-surface-2 border border-border grid place-items-center text-[10px] font-bold tabular shrink-0">
+                    {p.number ?? '–'}
+                  </span>
+                  <span className="text-xs font-medium truncate w-20 shrink-0">{p.name}</span>
+                  <div className="flex-1 h-2 rounded-full bg-surface-2 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${(p.goals / maxGoals) * 100}%`, background: myColor }} />
+                  </div>
+                  <span className="text-xs font-mono font-bold tabular w-6 text-right shrink-0">{p.goals}</span>
+                  <span className="text-[9px] text-muted-fg w-9 text-right shrink-0">
+                    {p.shots > 0 ? Math.round((p.goals / p.shots) * 100) : 0}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {keepers.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-fg mb-2">
+              🧤 Arqueros · atajadas
+            </div>
+            <div className="space-y-1.5">
+              {keepers.map((p) => (
+                <div key={`${p.number}-${p.name}`} className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-surface-2 border border-border grid place-items-center text-[10px] font-bold tabular shrink-0">
+                    {p.number ?? '–'}
+                  </span>
+                  <span className="text-xs font-medium truncate flex-1">{p.name}</span>
+                  <span className="text-sm font-mono font-bold tabular">{p.saves}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };
