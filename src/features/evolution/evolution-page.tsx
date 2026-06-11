@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { LeagueView } from './league-view';
 import { EmptyState } from '@/components/ui/feedback';
 import { Stack, MaxWidthContainer } from '@/components/ui/responsive-grid';
 import { useT } from '@/lib/i18n';
@@ -19,7 +20,7 @@ import type { MatchSummary } from '@/domain/types';
 import { selectHomeTeam, useMatchStore } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
-type ViewKind = 'season' | 'match';
+type ViewKind = 'season' | 'match' | 'league';
 
 export const EvolutionPage = () => {
   return (
@@ -101,6 +102,7 @@ const EvolutionPageInner = () => {
         {/* View tabs */}
         <div className="rounded-lg border border-border bg-surface p-1 flex gap-1">
           <ViewTab label={t.evo_tab_season} active={view === 'season'} onClick={() => setView('season')} />
+          <ViewTab label="🏆 Liga" active={view === 'league'} onClick={() => setView('league')} />
           <ViewTab label={t.evo_tab_match} active={view === 'match'} onClick={() => setView('match')} />
         </div>
 
@@ -109,6 +111,8 @@ const EvolutionPageInner = () => {
             setSelectedId(id);
             setView('match');
           }} />
+        ) : view === 'league' ? (
+          <LeagueView myTeamName={myTeam.name} />
         ) : (
           <MatchView
             matches={sorted}
