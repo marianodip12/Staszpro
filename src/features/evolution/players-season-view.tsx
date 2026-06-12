@@ -110,6 +110,12 @@ export const PlayersSeasonView = ({ matches, myTeamName, myTeam, myColor }: {
   );
   const teamPct = teamShots === 0 ? 0 : Math.round((teamGoals / teamShots) * 100);
 
+  // Goles recibidos: goles del rival en toda la temporada
+  const teamConceded = useMemo(
+    () => seasonEvents.filter((e) => e.team === 'away' && e.type === 'goal').length,
+    [seasonEvents],
+  );
+
   // ─── Eventos base del mapa (según selección) ──────────────────────
   const isKeeper = selected?.kind === 'keeper';
   const baseEvents = useMemo(() => {
@@ -237,14 +243,21 @@ export const PlayersSeasonView = ({ matches, myTeamName, myTeam, myColor }: {
             👥 Plantel · temporada
           </div>
           <div className="grid grid-cols-4 gap-2">
-            <PlantelTile value={rosterCount} label="Cargados" />
-            <PlantelTile value={withStatsCount} label="Con stats" />
             <PlantelTile value={teamShots} label="Tiros" />
+            <PlantelTile value={teamGoals} label="Goles" tone="goal" />
+            <PlantelTile value={teamConceded} label="Goles recibidos" tone="danger" />
             <PlantelTile value={`${teamPct}%`} label="Eficacia" tone="primary" />
+          </div>
+          <div className="text-[10px] text-muted-fg mt-2 text-center">
+            {rosterCount} {rosterCount === 1 ? 'jugador cargado' : 'jugadores cargados'} · {withStatsCount} con stats en la temporada
           </div>
         </CardContent>
       </Card>
 
+      {/* 2 columnas en desktop: lista de jugadores ⬅️ | ➡️ mapa del seleccionado */}
+      <div className="grid lg:grid-cols-2 gap-3 items-start">
+        {/* ── Columna izquierda: listas ── */}
+        <div className="space-y-3">
       {/* Tiradores */}
       {shooters.length > 0 && (
         <Card>
@@ -311,7 +324,10 @@ export const PlayersSeasonView = ({ matches, myTeamName, myTeam, myColor }: {
           </CardContent>
         </Card>
       )}
+        </div>
 
+        {/* ── Columna derecha: mapa del jugador clickeado (sticky en desktop) ── */}
+        <div className="lg:sticky lg:top-4">
       {/* Mapa de tiro de temporada */}
       <Card className={cn(selected && 'border-primary/40')}>
         <CardContent className="p-3 space-y-3">
@@ -406,6 +422,8 @@ export const PlayersSeasonView = ({ matches, myTeamName, myTeam, myColor }: {
           </div>
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   );
 };
@@ -489,13 +507,20 @@ const KeeperRow = ({ k, active, onClick }: {
   </button>
 );
 
-const PlantelTile = ({ value, label, tone }: {
-  value: number | string; label: string; tone?: 'primary';
+const PLANTEL_TONE: Record<string, string> = {
+  primary: 'text-primary',
+  goal: 'text-goal',
+  danger: 'text-danger',
+  neutral: 'text-fg',
+};
+
+const PlantelTile = ({ value, label, tone = 'neutral' }: {
+  value: number | string; label: string; tone?: keyof typeof PLANTEL_TONE;
 }) => (
-  <div className="flex flex-col items-center justify-center rounded-md bg-surface-2 border border-border py-1.5">
-    <span className={cn('font-mono font-semibold tabular leading-none text-base', tone === 'primary' ? 'text-primary' : 'text-fg')}>
+  <div className="flex flex-col items-center justify-center rounded-md bg-surface-2 border border-border py-1.5 px-1">
+    <span className={cn('font-mono font-semibold tabular leading-none text-base', PLANTEL_TONE[tone])}>
       {value}
     </span>
-    <span className="text-[8px] uppercase tracking-widest text-muted-fg mt-1">{label}</span>
+    <span className="text-[8px] uppercase tracking-widest text-muted-fg mt-1 text-center leading-tight">{label}</span>
   </div>
 );
