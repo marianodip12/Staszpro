@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LeagueView } from './league-view';
+import { PlayersSeasonView } from './players-season-view';
 import { EmptyState } from '@/components/ui/feedback';
 import { Stack, MaxWidthContainer } from '@/components/ui/responsive-grid';
 import { useT } from '@/lib/i18n';
@@ -20,7 +21,7 @@ import type { MatchSummary } from '@/domain/types';
 import { selectHomeTeam, useMatchStore } from '@/lib/store';
 import { cn } from '@/lib/cn';
 
-type ViewKind = 'season' | 'match' | 'league';
+type ViewKind = 'season' | 'match' | 'league' | 'players';
 
 export const EvolutionPage = () => {
   return (
@@ -102,6 +103,7 @@ const EvolutionPageInner = () => {
         {/* View tabs */}
         <div className="rounded-lg border border-border bg-surface p-1 flex gap-1">
           <ViewTab label={t.evo_tab_season} active={view === 'season'} onClick={() => setView('season')} />
+          <ViewTab label="👥 Jugadores" active={view === 'players'} onClick={() => setView('players')} />
           <ViewTab label="🏆 Liga" active={view === 'league'} onClick={() => setView('league')} />
           <ViewTab label={t.evo_tab_match} active={view === 'match'} onClick={() => setView('match')} />
         </div>
@@ -113,6 +115,13 @@ const EvolutionPageInner = () => {
           }} />
         ) : view === 'league' ? (
           <LeagueView myTeamName={myTeam.name} />
+        ) : view === 'players' ? (
+          <PlayersSeasonView
+            matches={sorted}
+            myTeamName={myTeam.name}
+            myTeam={myTeam}
+            myColor={myTeam.color}
+          />
         ) : (
           <MatchView
             matches={sorted}

@@ -217,3 +217,37 @@ export const seasonTotals = (
     avgAgainst: played === 0 ? 0 : Math.round((ga / played) * 10) / 10,
   };
 };
+
+// ─── Season player events (normalized perspective) ─────────────────────
+
+/**
+ * Junta los eventos de todos los partidos de la temporada y los normaliza
+ * a la perspectiva de "mi equipo": en el resultado, `team === 'home'`
+ * SIEMPRE es mi equipo y `team === 'away'` siempre es el rival, sin
+ * importar de qué lado jugó cada partido.
+ *
+ * Esto permite reutilizar perShooter / perGoalkeeper / perZone / etc.
+ * sobre la temporada completa con un filtro de equipo consistente.
+ *
+ * Los partidos donde mi equipo no participó se ignoran.
+ */
+export const seasonPlayerEvents = (
+  matches: MatchSummary[],
+  myTeamName: string,
+): HandballEvent[] => {
+  const out: HandballEvent[] = [];
+  for (const m of matches) {
+    const mySide: Team | null =
+      m.home === myTeamName ? 'home' : m.away === myTeamName ? 'away' : null;
+    if (!mySide) continue;
+    for (const e of m.events) {
+      if (mySide === 'home') {
+        out.push(e);
+      } else {
+        // Invertimos la perspectiva: mi equipo pasa a ser 'home'
+        out.push({ ...e, team: e.team === 'home' ? 'away' : 'home' });
+      }
+    }
+  }
+  return out;
+};

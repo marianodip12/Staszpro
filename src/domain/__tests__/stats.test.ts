@@ -303,7 +303,7 @@ describe('buildSeasonStats', () => {
       w: 1, d: 1, l: 1,
       gf: 25 + 22 + 18,
       ga: 20 + 22 + 24,
-      pts: 1 * 2 + 1,
+      pts: 3 + 2 + 1, // Sistema liga: G=3, E=2, P=1
       total: 3,
     });
   });

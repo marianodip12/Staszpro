@@ -14,6 +14,8 @@ import { TutorialOverlay, useShouldShowTutorial } from '@/features/tutorial/tuto
 import { SupportButton } from '@/components/support-button';
 import { BetaBanner } from '@/components/beta-banner';
 import { AdminPlanPreview } from '@/components/admin-plan-preview';
+import { ClubSwitcher, ClubContextBanner } from '@/components/club-switcher';
+import { clearClubContextSilent } from '@/lib/club-context';
 
 export const AppShell = () => {
   const location = useLocation();
@@ -52,6 +54,7 @@ export const AppShell = () => {
       // User changed — wipe local app state (Supabase migration handles data transfer)
       try {
         localStorage.removeItem('handball-pro-v11');
+        clearClubContextSilent();
       } catch {
         /* ignore */
       }
@@ -157,6 +160,24 @@ export const AppShell = () => {
               {plan}
             </span>
           </NavLink>
+
+          {/* Mi Staff — usuarios habilitados (Club/Elite, la página gatea) */}
+          <NavLink
+            to="/app/staff"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium mt-1',
+                isActive
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-fg hover:text-fg hover:bg-surface-2',
+              )
+            }
+          >
+            👔 <span>Mi Staff</span>
+          </NavLink>
+
+          {/* 👔 Selector de contexto de club (solo si fue invitado a alguno) */}
+          <ClubSwitcher />
 
           {/* Soporte link — visible para todos los logueados */}
           <NavLink
@@ -298,6 +319,7 @@ export const AppShell = () => {
         >
           <div className="w-full mx-auto lg:max-w-6xl">
             <BetaBanner className="mb-3" />
+            <ClubContextBanner className="mb-3" />
             <Outlet />
           </div>
         </main>

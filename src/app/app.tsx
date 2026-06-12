@@ -18,6 +18,7 @@ import { AdminPage } from '@/features/admin/admin-page';
 import { PlansPage } from '@/features/billing/plans-page';
 import { BillingReturnPage } from '@/features/billing/billing-return-page';
 import { SupportPage } from '@/features/support/support-page';
+import { StaffPage } from '@/features/staff/staff-page';
 import { I18nProvider } from '@/lib/i18n';
 import { AuthProvider } from '@/lib/auth';
 
@@ -58,6 +59,7 @@ const router = createBrowserRouter([
           { path: 'admin',       element: <AdminPage /> },
           { path: 'plans',       element: <PlansPage /> },
           { path: 'support',     element: <SupportPage /> },
+          { path: 'staff',       element: <StaffPage /> },
           { path: 'billing/success', element: <BillingReturnPage status="success" /> },
           { path: 'billing/failure', element: <BillingReturnPage status="failure" /> },
           { path: 'billing/pending', element: <BillingReturnPage status="pending" /> },

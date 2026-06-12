@@ -8,6 +8,7 @@ import { selectHomeTeam, useMatchStore } from '@/lib/store';
 import { deleteMatchFromServer } from '@/lib/sync';
 import { useT } from '@/lib/i18n';
 import { usePlan, hasVideoAndAI } from '@/lib/use-plan';
+import { isClubReadOnly } from '@/lib/club-context';
 import { LiveBanner, MatchCard } from './match-cards';
 import { NewMatchDialog, type NewMatchValues } from './new-match-dialog';
 import { SeasonSummary } from './season-summary';
@@ -31,6 +32,9 @@ export const MatchesPage = () => {
   const removeCompleted = useMatchStore((s) => s.removeCompleted);
   const syncing = useMatchStore((s) => s.syncing);
 
+  // 👁️ Contexto de club con rol solo lectura: sin crear ni borrar
+  const readOnlyClub = isClubReadOnly();
+
   const myTeamName = homeTeam?.name ?? 'Mi equipo';
   const liveScore = useMemo(() => computeScore(liveEvents), [liveEvents]);
   const seasonYear = new Date().getFullYear();
@@ -52,6 +56,7 @@ export const MatchesPage = () => {
   };
 
   const handleDelete = (id: string) => {
+    if (readOnlyClub) return;
     if (window.confirm(t.common_delete_match)) {
       removeCompleted(id);
       // Also delete from Supabase so it doesn't come back on refresh
@@ -70,7 +75,7 @@ export const MatchesPage = () => {
             <h1 className="text-3xl md:text-4xl font-semibold leading-tight">{t.matches_title}</h1>
             <p className="text-xs text-muted-fg mt-1">{t.matches_season} {seasonYear}</p>
           </div>
-          {status === 'idle' && (
+          {status === 'idle' && !readOnlyClub && (
             teams.length === 0 ? (
               <Button size="sm" variant="secondary" onClick={() => navigate('/app/teams')}>
                 {t.matches_load_team}

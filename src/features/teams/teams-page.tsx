@@ -8,6 +8,7 @@ import { sortedPlayers } from '@/domain/teams';
 import type { HandballTeam, Player } from '@/domain/types';
 import { selectHomeTeam, useMatchStore } from '@/lib/store';
 import { softDeleteTeamRemote } from '@/lib/sync';
+import { isClubReadOnly } from '@/lib/club-context';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { TeamDialog } from './team-dialog';
@@ -24,6 +25,9 @@ export const TeamsPage = () => {
   const upsertPlayer = useMatchStore((s) => s.upsertPlayer);
   const removePlayer = useMatchStore((s) => s.removePlayer);
 
+  // 👁️ Contexto de club con rol solo lectura
+  const readOnlyClub = isClubReadOnly();
+
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<HandballTeam | null>(null);
 
@@ -36,18 +40,22 @@ export const TeamsPage = () => {
   );
 
   const openCreateTeam = () => {
+    if (readOnlyClub) return;
     setEditingTeam(null);
     setTeamDialogOpen(true);
   };
   const openEditTeam = (team: HandballTeam) => {
+    if (readOnlyClub) return;
     setEditingTeam(team);
     setTeamDialogOpen(true);
   };
   const handleSaveTeam = (team: HandballTeam) => {
+    if (readOnlyClub) return;
     upsertTeam(team);
     setTeamDialogOpen(false);
   };
   const handleDeleteTeam = (team: HandballTeam) => {
+    if (readOnlyClub) return;
     const msg = team.players.length > 0
       ? `¿Eliminar ${team.name}? Se borrarán sus ${team.players.length} jugador${team.players.length === 1 ? '' : 'es'}.`
       : `¿Eliminar ${team.name}?`;
@@ -59,11 +67,11 @@ export const TeamsPage = () => {
     }
   };
 
-  const openCreatePlayer = () => { setEditingPlayer(null); setPlayerDialogOpen(true); };
-  const openEditPlayer = (p: Player) => { setEditingPlayer(p); setPlayerDialogOpen(true); };
-  const handleSavePlayer = (p: Player) => { if (!myTeam) return; upsertPlayer(myTeam.id, p); setPlayerDialogOpen(false); };
+  const openCreatePlayer = () => { if (readOnlyClub) return; setEditingPlayer(null); setPlayerDialogOpen(true); };
+  const openEditPlayer = (p: Player) => { if (readOnlyClub) return; setEditingPlayer(p); setPlayerDialogOpen(true); };
+  const handleSavePlayer = (p: Player) => { if (readOnlyClub || !myTeam) return; upsertPlayer(myTeam.id, p); setPlayerDialogOpen(false); };
   const handleDeletePlayer = (p: Player) => {
-    if (!myTeam) return;
+    if (readOnlyClub || !myTeam) return;
     if (window.confirm(`¿Eliminar a ${p.name}?`)) removePlayer(myTeam.id, p.id);
   };
 

@@ -11,6 +11,7 @@
  */
 
 import { ensureAnonSession, isSupabaseReady, supabase } from './supabase';
+import { clearClubContextSilent, clubDataOwner, getClubContext, isClubReadOnly } from './club-context';
 import { seedForUser } from './seed';
 import { useMatchStore } from './store';
 import type { HandballEvent, HandballTeam, MatchSummary, Player } from '@/domain/types';
@@ -20,6 +21,10 @@ import type { HandballEvent, HandballTeam, MatchSummary, Player } from '@/domain
 // ============================================================================
 let initialized = false;
 let userId: string | null = null;
+// 👔 Contexto de club: user_id bajo el cual se LEEN/ESCRIBEN los datos.
+// Si el usuario entró a un club como invitado, es el id del dueño;
+// si no, es su propio auth uid.
+let dataUid: string | null = null;
 let unsubscribeStore: (() => void) | null = null;
 
 // Cache de IDs ya sincronizados (local_id → supabase UUID) para evitar duplicar
@@ -280,17 +285,19 @@ function computeRunningScore(events: HandballEvent[]): { h: number; a: number } 
 // SYNC ALL
 // ============================================================================
 async function syncAll() {
-  if (!userId) return;
+  if (!dataUid) return;
+  // 👁️ Rol solo lectura en contexto de club: jamás subir nada.
+  if (isClubReadOnly()) return;
   // ⚠️ PRIMERO purgar tombstones del server. Esto corre en CADA ciclo de sync,
   // no solo al inicio: así una pestaña vieja con un match borrado en otra
   // pestaña/dispositivo lo purga de su store antes de intentar re-subirlo.
-  await purgeLocalDeletedTeams(userId);
+  await purgeLocalDeletedTeams(dataUid);
   await purgeLocalDeletedMatches();
 
   const state = useMatchStore.getState();
-  for (const team of state.teams) await syncTeam(team, userId);
-  for (const match of state.completed) await syncMatch(match, userId);
-  await syncLiveMatch(userId);
+  for (const team of state.teams) await syncTeam(team, dataUid);
+  for (const match of state.completed) await syncMatch(match, dataUid);
+  await syncLiveMatch(dataUid);
 }
 
 // ============================================================================
@@ -399,7 +406,9 @@ async function purgeLocalDeletedTeams(
   serverActiveLocalIds?: Set<string>,
 ): Promise<void> {
   try {
-    const { data: tombstones } = await supabase.rpc('get_deleted_team_local_ids');
+    const { data: tombstones } = await supabase.rpc('get_deleted_team_local_ids', {
+      p_owner: getClubContext()?.ownerId ?? null,
+    });
     const deletedLocalIds = new Set<string>(
       (tombstones ?? []).map((row: any) => row.local_id).filter(Boolean),
     );
@@ -613,7 +622,9 @@ async function downloadFromServer(uid: string): Promise<void> {
  */
 async function purgeLocalDeletedMatches(): Promise<void> {
   try {
-    const { data: tombstones } = await supabase.rpc('get_deleted_match_local_ids');
+    const { data: tombstones } = await supabase.rpc('get_deleted_match_local_ids', {
+      p_owner: getClubContext()?.ownerId ?? null,
+    });
     const deletedMatchLocalIds = new Set<string>(
       (tombstones ?? []).map((row: any) => row.local_id).filter(Boolean),
     );
@@ -687,7 +698,8 @@ async function bootstrapForUser(uid: string): Promise<void> {
     // Cuenta vacía (usuario nuevo) → equipos demo + partido demo del tutorial.
     // El flag es POR USUARIO: cada cuenta nueva recibe su demo aunque este
     // navegador ya haya sembrado para otra.
-    seedForUser(uid, useMatchStore.getState());
+    // 👔 NUNCA sembrar demos en la cuenta de un club ajeno.
+    if (!getClubContext()) seedForUser(uid, useMatchStore.getState());
   } finally {
     useMatchStore.getState().setSyncing(false);
   }
@@ -711,9 +723,10 @@ export async function initSync(): Promise<void> {
     return;
   }
   userId = uid;
-  console.log('[sync] user:', uid);
+  dataUid = clubDataOwner(uid);
+  console.log('[sync] user:', uid, dataUid !== uid ? `(club ctx → ${dataUid})` : '');
 
-  await bootstrapForUser(uid);
+  await bootstrapForUser(dataUid);
 
   // ⚠️ FIX "inicio sesión y no veo mis partidos hasta refrescar":
   // initSync corre UNA vez al boot. Si el usuario después se loguea
@@ -725,6 +738,9 @@ export async function initSync(): Promise<void> {
     if (event === 'SIGNED_IN' && newUid && newUid !== userId) {
       console.log('[sync] cambio de usuario, re-bootstrap:', newUid);
       userId = newUid;
+      // El contexto de club pertenece a la cuenta anterior: lo limpiamos.
+      clearClubContextSilent();
+      dataUid = newUid;
       // Limpiar caches y datos locales del usuario anterior para no
       // contaminar la cuenta nueva con equipos/partidos ajenos.
       teamCache.clear(); playerCache.clear(); matchCache.clear(); eventCache.clear();
@@ -734,6 +750,8 @@ export async function initSync(): Promise<void> {
     }
     if (event === 'SIGNED_OUT') {
       userId = null;
+      dataUid = null;
+      clearClubContextSilent();
     }
   });
 
@@ -788,7 +806,8 @@ export function getCurrentUserId(): string | null {
  * Esto es lo que el usuario pidió: "eliminar = ocultar, no perder".
  */
 export async function deleteMatchFromServer(localId: string): Promise<void> {
-  if (!userId || !isSupabaseReady()) return;
+  if (!dataUid || !isSupabaseReady()) return;
+  if (isClubReadOnly()) return;
 
   try {
     let dbId = matchCache.get(localId);
@@ -796,7 +815,7 @@ export async function deleteMatchFromServer(localId: string): Promise<void> {
     if (!dbId) {
       const { data } = await supabase
         .from('matches').select('id')
-        .eq('user_id', userId).eq('local_id', localId).maybeSingle();
+        .eq('user_id', dataUid).eq('local_id', localId).maybeSingle();
       if (data) dbId = data.id;
     }
 
@@ -825,14 +844,15 @@ export async function deleteMatchFromServer(localId: string): Promise<void> {
  * quede oculto server-side y NO se re-suba en el próximo sync.
  */
 export async function softDeleteTeamRemote(localId: string): Promise<void> {
-  if (!userId || !isSupabaseReady()) return;
+  if (!dataUid || !isSupabaseReady()) return;
+  if (isClubReadOnly()) return;
 
   try {
     let dbId = teamCache.get(localId);
     if (!dbId) {
       const { data } = await supabase
         .from('teams').select('id')
-        .eq('user_id', userId).eq('local_id', localId).maybeSingle();
+        .eq('user_id', dataUid).eq('local_id', localId).maybeSingle();
       if (data) dbId = data.id;
     }
     if (!dbId) {
@@ -854,12 +874,13 @@ export async function softDeleteTeamRemote(localId: string): Promise<void> {
 
 /** Soft-delete server-side de un evento individual (ej: borrar gol falso). */
 export async function softDeleteEventRemote(eventLocalId: string): Promise<void> {
-  if (!userId || !isSupabaseReady()) return;
+  if (!dataUid || !isSupabaseReady()) return;
+  if (isClubReadOnly()) return;
 
   try {
     const { data } = await supabase
       .from('events').select('id')
-      .eq('user_id', userId).eq('local_id', eventLocalId).maybeSingle();
+      .eq('user_id', dataUid).eq('local_id', eventLocalId).maybeSingle();
     if (!data) return;
 
     const { error } = await supabase.rpc('soft_delete_event', { p_event_id: data.id });
@@ -889,12 +910,14 @@ export async function discardLiveMatchRemote(): Promise<void> {
   try {
     if (!userId) userId = await ensureAnonSession();
     if (!userId) return;
+    if (!dataUid) dataUid = clubDataOwner(userId);
+    if (isClubReadOnly()) return;
 
     let dbId = matchCache.get(localId);
     if (!dbId) {
       const { data } = await supabase
         .from('matches').select('id')
-        .eq('user_id', userId).eq('local_id', localId).maybeSingle();
+        .eq('user_id', dataUid).eq('local_id', localId).maybeSingle();
       if (data) dbId = data.id;
     }
     if (!dbId) return; // nunca llegó a subirse, nada que borrar
@@ -914,5 +937,6 @@ export async function forceSyncNow(): Promise<void> {
   if (!userId) {
     userId = await ensureAnonSession();
   }
+  if (!dataUid && userId) dataUid = clubDataOwner(userId);
   await syncAll();
 }

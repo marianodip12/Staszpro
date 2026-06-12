@@ -4,6 +4,7 @@ import {
   longestRun,
   resultFor,
   scoreTimeline,
+  seasonPlayerEvents,
   seasonTimeline,
   seasonTotals,
 } from '../evolution';
@@ -141,8 +142,9 @@ describe('seasonTimeline / seasonTotals', () => {
     const t = seasonTimeline(matches, myTeam);
     expect(t).toHaveLength(3);
     expect(t[0]).toMatchObject({ result: 'win', runningPoints: 3, runningWins: 1 });
-    expect(t[1]).toMatchObject({ result: 'loss', runningPoints: 3, runningLosses: 1 });
-    expect(t[2]).toMatchObject({ result: 'draw', runningPoints: 4, runningDraws: 1 });
+    // Sistema liga: G=3, E=2, P=1
+    expect(t[1]).toMatchObject({ result: 'loss', runningPoints: 4, runningLosses: 1 });
+    expect(t[2]).toMatchObject({ result: 'draw', runningPoints: 6, runningDraws: 1 });
   });
 
   it('seasonTimeline exposes opponent and my goals correctly whether home or away', () => {
@@ -160,12 +162,50 @@ describe('seasonTimeline / seasonTotals', () => {
       losses: 1,
       goalsFor: 25 + 18 + 17,
       goalsAgainst: 20 + 22 + 17,
-      points: 4,
+      points: 6, // G=3 + E=2 + P=1
     });
     expect(s.avgFor).toBeCloseTo(20, 1);
   });
 
   it('seasonTotals handles empty season', () => {
     expect(seasonTotals([], myTeam)).toMatchObject({ played: 0, points: 0, avgFor: 0 });
+  });
+});
+
+describe('seasonPlayerEvents', () => {
+  it('normaliza la perspectiva: mi equipo siempre es home', () => {
+    const m1 = match({
+      home: 'Gei', away: 'Vilo', hs: 1, as: 0,
+      events: [
+        mk({ type: 'goal', team: 'home', min: 5, shooter: { name: 'Juan', number: 7 } }),
+        mk({ type: 'saved', team: 'away', min: 8, goalkeeper: { name: 'Pedro', number: 1 } }),
+      ],
+    });
+    // Mismo equipo pero jugando de visitante
+    const m2 = match({
+      home: 'Arg', away: 'Gei', hs: 0, as: 1,
+      events: [
+        mk({ type: 'goal', team: 'away', min: 12, shooter: { name: 'Juan', number: 7 } }),
+        mk({ type: 'saved', team: 'home', min: 20, goalkeeper: { name: 'Pedro', number: 1 } }),
+      ],
+    });
+    // Partido donde Gei no jugó: se ignora
+    const m3 = match({ home: 'Vilo', away: 'Arg', hs: 2, as: 2, events: [mk({ type: 'goal', team: 'home', min: 3 })] });
+
+    const evs = seasonPlayerEvents([m1, m2, m3], 'Gei');
+    expect(evs).toHaveLength(4);
+    // Los goles de Juan quedan ambos como 'home'
+    const mine = evs.filter((e) => e.team === 'home' && e.type === 'goal');
+    expect(mine).toHaveLength(2);
+    // Los tiros del rival atajados por Pedro quedan ambos como 'away'
+    const rivalSaved = evs.filter((e) => e.team === 'away' && e.type === 'saved');
+    expect(rivalSaved).toHaveLength(2);
+  });
+
+  it('no muta los eventos originales', () => {
+    const e = mk({ type: 'goal', team: 'home', min: 1 });
+    const m = match({ home: 'Arg', away: 'Gei', hs: 0, as: 1, events: [e] });
+    seasonPlayerEvents([m], 'Gei');
+    expect(e.team).toBe('home');
   });
 });

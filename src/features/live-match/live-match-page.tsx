@@ -33,12 +33,29 @@ import { LiveMatchFree } from './live-match-free';
 import { SuperpowerBar } from './superpower-bar';
 import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
 import { hasCompleteMode, usePlan } from '@/lib/use-plan';
+import { isClubReadOnly } from '@/lib/club-context';
 
 // ─── Plan-aware wrapper ──────────────────────────────────────────────────────
 // Nota: el plan determina qué se ve. Si el admin se pone como Free, ve como Free
 // (esto es útil para testing). Para acceder a admin features, está /app/admin.
 export const LiveMatchPage = () => {
   const { plan, loading, betaActive } = usePlan();
+  // 👁️ Contexto de club con rol solo lectura: no se puede cargar en vivo
+  if (isClubReadOnly()) {
+    return (
+      <div className="space-y-4">
+        <header>
+          <h1 className="text-2xl font-semibold">En vivo</h1>
+        </header>
+        <div className="rounded-lg border border-dashed border-border bg-surface p-6 text-center">
+          <p className="text-sm text-muted-fg">
+            👁️ Estás en un club con rol de solo lectura: no podés cargar partidos en vivo.
+            Podés ver los partidos, estadísticas y evolución del club.
+          </p>
+        </div>
+      </div>
+    );
+  }
   if (loading) {
     return <div className="flex items-center justify-center py-20 text-sm text-muted-fg">Cargando…</div>;
   }
