@@ -12,7 +12,7 @@ export type Plan = 'free' | 'pro' | 'club' | 'elite';
  * Para apagar el modo beta antes de tiempo: poner una fecha en el pasado.
  * Para extenderlo: mover la fecha más adelante.
  */
-export const BETA_UNTIL = new Date('2026-08-30T23:59:59-03:00');
+export const BETA_UNTIL = new Date('2026-08-31T23:59:59-03:00');
 
 export interface PlanInfo {
   plan: Plan;
