@@ -302,7 +302,7 @@ export const AdminPage = () => {
                         <div className="flex items-center gap-2 justify-end">
                           <button
                             type="button"
-                            onClick={() => navigate(`/app/analysis/${m.local_id ?? m.match_id}`)}
+                            onClick={() => navigate(`/app/analysis/${m.match_id}`)}
                             className="text-muted-fg hover:text-primary transition-colors text-xs"
                             title="Ver detalle del partido"
                           >

@@ -933,6 +933,75 @@ export async function discardLiveMatchRemote(): Promise<void> {
   }
 }
 
+/**
+ * 👮 Admin: trae cualquier partido del servidor (de cualquier usuario) y lo
+ * mapea a MatchSummary. Lo usa la página de análisis cuando el partido no
+ * está en el store local — típicamente al tocar "Ver" en el panel admin.
+ * Las policies RLS de admin (matches/events_admin_select) permiten el SELECT;
+ * para usuarios no-admin esto devuelve null y no pasa nada.
+ *
+ * Acepta uuid del server o local_id. Prioriza uuid porque los local_id de
+ * los partidos demo ("match-demo-1") se repiten entre usuarios.
+ */
+export async function fetchMatchAsAdmin(idParam: string): Promise<MatchSummary | null> {
+  if (!isSupabaseReady()) return null;
+  try {
+    let row: any = null;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idParam);
+    if (isUuid) {
+      const { data } = await supabase
+        .from('matches').select('*, events(*)')
+        .eq('id', idParam).is('deleted_at', null).limit(1);
+      row = data?.[0] ?? null;
+    }
+    if (!row) {
+      const { data } = await supabase
+        .from('matches').select('*, events(*)')
+        .eq('local_id', idParam).is('deleted_at', null)
+        .order('created_at', { ascending: false }).limit(1);
+      row = data?.[0] ?? null;
+    }
+    if (!row) return null;
+
+    const events: HandballEvent[] = (row.events ?? [])
+      .filter((e: any) => e.deleted_at == null)
+      .map((e: any): HandballEvent => ({
+        id: e.local_id ?? e.id,
+        min: e.minute ?? 0,
+        team: e.team,
+        type: e.type,
+        zone: e.zone ?? null,
+        goalZone: e.goal_section ?? null,
+        situation: e.situation ?? null,
+        throwType: e.throw_type ?? null,
+        shooter: e.shooter_name ? { name: e.shooter_name, number: e.shooter_number ?? 0 } : null,
+        goalkeeper: e.goalkeeper_name ? { name: e.goalkeeper_name, number: e.goalkeeper_number ?? 0 } : null,
+        sanctioned: e.sanctioned_name ? { name: e.sanctioned_name, number: e.sanctioned_number ?? 0 } : null,
+        hScore: e.h_score ?? 0,
+        aScore: e.a_score ?? 0,
+        quickMode: e.quick_mode ?? false,
+        completed: e.completed ?? true,
+      }));
+
+    return {
+      id: row.local_id ?? row.id,
+      home: row.home_name ?? row.home_team_name ?? 'Local',
+      away: row.away_name ?? row.away_team_name ?? 'Visitante',
+      hs: row.home_score ?? 0,
+      as: row.away_score ?? 0,
+      date: row.match_date ?? null,
+      competition: row.competition ?? null,
+      homeColor: row.home_color ?? '#3B82F6',
+      awayColor: row.away_color ?? '#64748B',
+      events,
+    };
+  } catch (err) {
+    console.warn('[sync] fetchMatchAsAdmin falló:', err);
+    return null;
+  }
+}
+
 export async function forceSyncNow(): Promise<void> {
   if (!userId) {
     userId = await ensureAnonSession();

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { usePlan } from '@/lib/use-plan';
+import { fetchMatchAsAdmin } from '@/lib/sync';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,10 +80,11 @@ interface MatchAnalysisPageProps {
   readonly?: boolean;
 }
 
-export const MatchAnalysisPage = ({ externalMatch, readonly = false }: MatchAnalysisPageProps = {}) => {
+export const MatchAnalysisPage = ({ externalMatch, readonly: readonlyProp = false }: MatchAnalysisPageProps = {}) => {
   const t = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAdmin } = usePlan();
 
   const completed = useMatchStore((s) => s.completed);
   const myTeam = useMatchStore(selectHomeTeam);
@@ -89,10 +92,33 @@ export const MatchAnalysisPage = ({ externalMatch, readonly = false }: MatchAnal
   const removeCompletedEvent = useMatchStore((s) => s.removeCompletedEvent);
   const addCompletedEvent = useMatchStore((s) => s.addCompletedEvent);
 
-  const match = useMemo(
+  const localMatch = useMemo(
     () => externalMatch ?? completed.find((m) => m.id === id) ?? null,
     [externalMatch, completed, id],
   );
+
+  // 👮 Fallback de admin: si el partido no está en el store local (ej:
+  // "Ver" desde el panel admin sobre un partido de OTRO usuario), lo
+  // bajamos del servidor. Las RLS de admin permiten el SELECT.
+  const [adminMatch, setAdminMatch] = useState<import('@/domain/types').MatchSummary | null>(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+
+  useEffect(() => {
+    if (localMatch || !id || !isAdmin) return;
+    let cancelled = false;
+    setAdminLoading(true);
+    void fetchMatchAsAdmin(id).then((m) => {
+      if (cancelled) return;
+      setAdminMatch(m);
+      setAdminLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [localMatch, id, isAdmin]);
+
+  const match = localMatch ?? adminMatch;
+  // Partido ajeno traído como admin: SIEMPRE solo lectura (editarlo no
+  // sincronizaría con el dueño y corrompería los datos).
+  const readonly = readonlyProp || (!localMatch && adminMatch !== null);
 
   const [filter, setFilter] = useState<MatchFilter>(EMPTY_FILTER);
   const [fueraMode, setFueraMode] = useState<boolean>(false);
@@ -123,10 +149,16 @@ export const MatchAnalysisPage = ({ externalMatch, readonly = false }: MatchAnal
         </header>
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-fg mb-3">
-              No encontré ese partido. Puede que lo hayas eliminado o que el enlace esté roto.
-            </p>
-            <Button onClick={() => navigate('/app')}>Volver a Partidos</Button>
+            {isAdmin && adminLoading ? (
+              <p className="text-sm text-muted-fg">Buscando el partido en el servidor…</p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-fg mb-3">
+                  No encontré ese partido. Puede que lo hayas eliminado o que el enlace esté roto.
+                </p>
+                <Button onClick={() => navigate('/app')}>Volver a Partidos</Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
