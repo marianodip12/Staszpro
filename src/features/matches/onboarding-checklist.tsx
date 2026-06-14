@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMatchStore } from '@/lib/store';
+import { useAuth } from '@/lib/auth';
 import { DEMO_MATCH_ID } from '@/lib/seed';
 import { cn } from '@/lib/cn';
 
@@ -20,6 +21,11 @@ const DISMISS_KEY = 'statzpro_onboarding_done';
  */
 export const OnboardingChecklist = ({ className }: { className?: string }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // Marca de "ocultado" por usuario, no global del dispositivo: así una cuenta
+  // nueva (p. ej. recién creada con Google) ve el checklist aunque en este
+  // dispositivo otro usuario ya lo hubiera cerrado.
+  const dismissKey = user?.id ? `${DISMISS_KEY}:${user.id}` : DISMISS_KEY;
   const teams = useMatchStore((s) => s.teams);
   const completed = useMatchStore((s) => s.completed);
   const [dismissed, setDismissed] = useState(false);
@@ -52,7 +58,7 @@ export const OnboardingChecklist = ({ className }: { className?: string }) => {
   const hasMatch = hasOwnMatch;
 
   const alreadyDone = typeof localStorage !== 'undefined' &&
-    localStorage.getItem(DISMISS_KEY) === '1';
+    localStorage.getItem(dismissKey) === '1';
 
   const steps = [
     {
@@ -88,7 +94,7 @@ export const OnboardingChecklist = ({ className }: { className?: string }) => {
   if (allDone || alreadyDone || dismissed) {
     // Marcamos como hecho la primera vez que se completa.
     if (allDone && !alreadyDone && typeof localStorage !== 'undefined') {
-      localStorage.setItem(DISMISS_KEY, '1');
+      localStorage.setItem(dismissKey, '1');
     }
     return null;
   }
@@ -107,7 +113,7 @@ export const OnboardingChecklist = ({ className }: { className?: string }) => {
         <button
           type="button"
           onClick={() => {
-            if (typeof localStorage !== 'undefined') localStorage.setItem(DISMISS_KEY, '1');
+            if (typeof localStorage !== 'undefined') localStorage.setItem(dismissKey, '1');
             setDismissed(true);
           }}
           className="text-[11px] text-muted-fg hover:text-fg"

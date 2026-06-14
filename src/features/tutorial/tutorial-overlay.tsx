@@ -125,23 +125,32 @@ export const useShouldShowTutorial = () => {
     let cancelled = false;
 
     const check = async () => {
-      try {
-        if (localStorage.getItem(TUTORIAL_KEY)) return; // ya visto en este dispositivo
-      } catch { return; }
-
-      // Chequear server-side antes de mostrar (evita re-mostrar tras un wipe)
+      // Si hay sesión, el estado del servidor (user_plans.tutorial_done) manda:
+      // es por-usuario, así que un flag viejo del dispositivo NO le oculta el
+      // tutorial a una cuenta nueva (p. ej. recién registrada con Google sobre
+      // una sesión anónima previa que ya lo había visto/cerrado).
       if (isSupabaseReady()) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            const { data } = await supabase.rpc('get_tutorial_done');
-            if (data === true) {
-              try { localStorage.setItem(TUTORIAL_KEY, 'true'); } catch { /* noop */ }
+            const { data, error } = await supabase.rpc('get_tutorial_done');
+            if (!error) {
+              if (data === true) {
+                try { localStorage.setItem(TUTORIAL_KEY, 'true'); } catch { /* noop */ }
+                return; // este usuario ya lo completó
+              }
+              if (!cancelled) setShow(true); // este usuario NO lo hizo → mostrar
               return;
             }
+            // error en el RPC → caemos al fallback local de abajo
           }
-        } catch { /* si falla el server, caemos al comportamiento local */ }
+        } catch { /* sin red / sin sesión → fallback local */ }
       }
+
+      // Fallback (sin sesión u offline): flag del dispositivo.
+      try {
+        if (localStorage.getItem(TUTORIAL_KEY)) return; // ya visto en este dispositivo
+      } catch { return; }
 
       if (!cancelled) setShow(true);
     };
