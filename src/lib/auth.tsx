@@ -153,6 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/app`,
+        queryParams: { prompt: 'select_account' },
       },
     });
     if (error) return error.message;

@@ -16,7 +16,7 @@ export const PlansPage = () => {
   const [donateOpen, setDonateOpen] = useState(false);
 
   const handleSelectPlan = (plan: Plan) => {
-    // ⚠️ BETA: pagos bloqueados hasta el fin de la beta (30/8). Todos los
+    // ⚠️ BETA: pagos bloqueados hasta el fin de la beta (31/8). Todos los
     // planes están desbloqueados gratis; ofrecemos donar en su lugar.
     if (betaActive) {
       setDonateOpen(true);
@@ -43,7 +43,7 @@ export const PlansPage = () => {
           10 partidos gratis para probar la app. Pasate a Pro o Club cuando quieras más análisis.
         </p>
         <div className="max-w-xl mx-auto rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-left">
-          <p className="text-sm font-semibold text-primary">🚀 Beta abierta: todo gratis hasta el 30 de agosto</p>
+          <p className="text-sm font-semibold text-primary">🎉 Probá gratis hasta el 31 de agosto</p>
           <p className="text-xs text-muted-fg mt-1 leading-relaxed">
             Durante la beta todos los planes están desbloqueados y los pagos están desactivados.
             Si la app te sirve y querés bancar el proyecto, podés{' '}

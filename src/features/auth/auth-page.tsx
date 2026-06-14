@@ -227,25 +227,21 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          {/* Google button - disabled for now */}
+          {/* Google button */}
           <div>
             <button
               type="button"
               onClick={handleGoogle}
-              disabled
-              title={t.auth_google_disabled_help}
+              disabled={loading}
               className={cn(
                 'w-full px-4 py-2.5 rounded-md border border-border bg-surface-2/50',
                 'flex items-center justify-center gap-2 text-sm font-medium',
-                'opacity-50 cursor-not-allowed',
+                'hover:bg-surface-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed',
               )}
             >
               <GoogleIcon />
               <span>{t.auth_google_button}</span>
             </button>
-            <p className="text-[10px] text-muted-fg text-center mt-1">
-              {t.auth_google_disabled_help}
-            </p>
           </div>
 
           <div className="text-center text-sm text-muted-fg">
