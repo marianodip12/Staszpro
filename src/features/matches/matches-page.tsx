@@ -8,6 +8,7 @@ import { selectHomeTeam, useMatchStore } from '@/lib/store';
 import { deleteMatchFromServer } from '@/lib/sync';
 import { useT } from '@/lib/i18n';
 import { usePlan, hasVideoAndAI } from '@/lib/use-plan';
+import { OnboardingChecklist } from './onboarding-checklist';
 import { isClubReadOnly } from '@/lib/club-context';
 import { LiveBanner, MatchCard } from './match-cards';
 import { NewMatchDialog, type NewMatchValues } from './new-match-dialog';
@@ -101,6 +102,9 @@ export const MatchesPage = () => {
             onUpgrade={() => navigate('/app/plans')}
           />
         )}
+
+        {/* 🚀 Checklist de primeros pasos — solo para mis datos, no en club ajeno */}
+        {!readOnlyClub && <OnboardingChecklist />}
 
         {completed.length > 0 && (
           <SeasonSummary completedMatches={completed} myTeamName={myTeamName} />

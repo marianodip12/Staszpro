@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUpWithPassword = useCallback(
     async (email: string, password: string): Promise<string | null> => {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -127,6 +127,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
       if (error) return error.message;
+      // Si Supabase ya devolvió sesión (confirmación de mail desactivada),
+      // dejamos al usuario adentro al instante. Señalizamos con 'SESSION_READY'
+      // para que la UI navegue a la app en vez de mostrar "revisá tu mail".
+      if (data.session) return 'SESSION_READY';
       return null;
     },
     [],

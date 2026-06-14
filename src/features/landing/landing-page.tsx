@@ -60,7 +60,7 @@ export const LandingPage = () => {
             <>
               <Link
                 to="/login"
-                className="hidden sm:inline-flex text-xs md:text-sm px-3 py-1.5 rounded-md text-muted-fg hover:text-fg transition-colors"
+                className="inline-flex text-xs md:text-sm px-3 py-1.5 rounded-md text-muted-fg hover:text-fg transition-colors"
               >
                 {t.landing_nav_signin}
               </Link>

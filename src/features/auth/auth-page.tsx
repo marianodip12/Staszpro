@@ -68,6 +68,13 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
           ? await signUpWithPassword(email, password)
           : await signInWithPassword(email, password);
 
+      // Caso especial: signup con sesión inmediata (confirmación de mail OFF).
+      // Entramos directo a la app — el usuario confirma el mail más tarde.
+      if (mode === 'signup' && errMsg === 'SESSION_READY') {
+        navigate('/app', { replace: true });
+        return;
+      }
+
       if (errMsg) {
         // Map common Supabase errors to friendlier messages
         if (errMsg.toLowerCase().includes('invalid login') || errMsg.toLowerCase().includes('invalid credentials')) {

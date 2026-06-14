@@ -13,6 +13,7 @@ import { DonationDialog } from '@/components/donation-dialog';
 import { TutorialOverlay, useShouldShowTutorial } from '@/features/tutorial/tutorial-overlay';
 import { SupportButton } from '@/components/support-button';
 import { BetaBanner } from '@/components/beta-banner';
+import { ConfirmEmailBanner } from '@/components/confirm-email-banner';
 import { AdminPlanPreview } from '@/components/admin-plan-preview';
 import { ClubSwitcher, ClubContextBanner } from '@/components/club-switcher';
 import { clearClubContextSilent } from '@/lib/club-context';
@@ -319,6 +320,7 @@ export const AppShell = () => {
         >
           <div className="w-full mx-auto lg:max-w-6xl">
             <BetaBanner className="mb-3" />
+            <ConfirmEmailBanner className="mb-3" />
             <ClubContextBanner className="mb-3" />
             <Outlet />
           </div>
