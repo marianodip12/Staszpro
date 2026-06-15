@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
@@ -21,11 +22,14 @@ interface TicketChatProps {
 
 /**
  * Hilo de chat de un ticket. Sirve igual para el usuario y para el admin.
- * - Lee con la RPC `ticket_list_messages` (gated: admin o dueño).
- * - Postea con la RPC `ticket_post_message` (el rol se infiere en el server).
- * - Escucha realtime sobre `ticket_messages` para actualizarse en vivo.
+ * Acceso DIRECTO a la tabla `ticket_messages` (no RPC) para no depender del
+ * cache de funciones de PostgREST. La seguridad la garantiza la RLS:
+ *   - SELECT: admin o dueño del ticket.
+ *   - INSERT: rol 'user' solo el dueño (sender_id = auth.uid()); rol 'admin' solo is_admin().
+ * Realtime mantiene el hilo vivo en ambos lados.
  */
 export const TicketChat = ({ ticketId, isAdmin = false, className }: TicketChatProps) => {
+  const { user } = useAuth();
   const myRole: 'user' | 'admin' = isAdmin ? 'admin' : 'user';
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -42,19 +46,22 @@ export const TicketChat = ({ ticketId, isAdmin = false, className }: TicketChatP
     );
   }, []);
 
-  // Carga inicial
+  // Carga inicial (directo a la tabla, gated por RLS)
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-    supabase
-      .rpc('ticket_list_messages', { p_ticket_id: ticketId })
-      .then(({ data, error: rpcErr }) => {
-        if (!alive) return;
-        if (rpcErr) setError(rpcErr.message);
-        else setMessages((data ?? []) as TicketMessage[]);
-      })
-      .then(() => { if (alive) setLoading(false); });
+    (async () => {
+      const { data, error: qErr } = await supabase
+        .from('ticket_messages')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: true });
+      if (!alive) return;
+      if (qErr) setError(qErr.message);
+      else setMessages((data ?? []) as TicketMessage[]);
+      setLoading(false);
+    })();
     return () => { alive = false; };
   }, [ticketId]);
 
@@ -79,15 +86,21 @@ export const TicketChat = ({ ticketId, isAdmin = false, className }: TicketChatP
 
   const handleSend = async () => {
     const body = draft.trim();
-    if (!body || sending) return;
+    if (!body || sending || !user) return;
     setSending(true);
     setError(null);
-    const { data, error: rpcErr } = await supabase.rpc('ticket_post_message', {
-      p_ticket_id: ticketId,
-      p_body: body,
-    });
+    const { data, error: insErr } = await supabase
+      .from('ticket_messages')
+      .insert({
+        ticket_id: ticketId,
+        body,
+        sender_role: myRole,
+        sender_id: user.id,
+      })
+      .select('*')
+      .single();
     setSending(false);
-    if (rpcErr) { setError(rpcErr.message); return; }
+    if (insErr) { setError(insErr.message); return; }
     if (data) upsert(data as TicketMessage); // optimista; realtime lo deduplica
     setDraft('');
   };
@@ -149,7 +162,7 @@ export const TicketChat = ({ ticketId, isAdmin = false, className }: TicketChatP
           className="flex-1 resize-none max-h-28 rounded-md border border-border bg-bg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           maxLength={4000}
         />
-        <Button size="sm" onClick={handleSend} disabled={sending || !draft.trim()}>
+        <Button size="sm" onClick={handleSend} disabled={sending || !draft.trim() || !user}>
           {sending ? '…' : 'Enviar'}
         </Button>
       </div>
