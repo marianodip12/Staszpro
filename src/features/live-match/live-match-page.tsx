@@ -31,7 +31,7 @@ import { EventEditDialog } from './event-edit-dialog';
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import { LiveMatchFree } from './live-match-free';
 import { SuperpowerBar } from './superpower-bar';
-import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
+import { softDeleteEventRemote, discardLiveMatchRemote, finishLiveMatchRemote } from '@/lib/sync';
 import { hasCompleteMode, usePlan } from '@/lib/use-plan';
 import { isClubReadOnly } from '@/lib/club-context';
 
@@ -418,6 +418,11 @@ const LiveMatchPagePro = () => {
 
   const handleFinish = () => {
     if (window.confirm(t.live_finish_confirm)) {
+      // ⚠️ Primero empujar el finish al server (lee liveMatch.id + liveEvents
+      // del store mientras siguen en estado 'live'), recién después mover a
+      // completed local. Si no, el server queda en 'live' y el partido se
+      // reabre/duplica al recargar.
+      void finishLiveMatchRemote();
       finishLive();
       navigate('/app');
     }

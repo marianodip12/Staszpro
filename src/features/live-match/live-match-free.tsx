@@ -10,7 +10,7 @@ import { EMPTY_DRAFT, buildEvent, rosterKindFor, splitRoster } from '@/domain/li
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import type { EventType, HandballEvent, PersonRef, Team } from '@/domain/types';
 import { useMatchStore } from '@/lib/store';
-import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
+import { softDeleteEventRemote, discardLiveMatchRemote, finishLiveMatchRemote } from '@/lib/sync';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { Scoreboard } from './scoreboard';
@@ -179,7 +179,7 @@ export const LiveMatchFree = ({ modeSwitch }: LiveMatchFreeProps = {}) => {
   }, [pending, match, teams, events]);
 
   const handleFinish = () => {
-    if (window.confirm(t.live_finish_confirm)) { finishLive(); navigate('/app'); }
+    if (window.confirm(t.live_finish_confirm)) { void finishLiveMatchRemote(); finishLive(); navigate('/app'); }
   };
   const handleDiscard = () => {
     if (window.confirm(t.live_discard_confirm)) { void discardLiveMatchRemote(); closeLive(); navigate('/app'); }

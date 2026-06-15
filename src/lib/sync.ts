@@ -454,7 +454,38 @@ async function purgeLocalDeletedTeams(
 async function downloadLiveFromServer(uid: string): Promise<void> {
   try {
     const local = useMatchStore.getState();
-    if (local.status === 'live') return;
+    if (local.status === 'live') {
+      // ⚠️ ESTADO CORRUPTO: el partido en vivo local YA está en `completed`.
+      // Esto pasa cuando el bug viejo resucitó como live un partido finalizado
+      // (status='live' en server + copia en completed). No es un partido en
+      // progreso real: limpiamos el estado live y reconciliamos el server a
+      // 'finished'. Sin esto, una sesión ya contaminada seguía mostrando el
+      // duplicado aun después de deployar el fix.
+      if (local.liveMatch.id && local.completed.some((cm) => cm.id === local.liveMatch.id)) {
+        const dup = local.completed.find((cm) => cm.id === local.liveMatch.id)!;
+        console.log(`[sync] estado live local duplica el partido finalizado ${dup.home} vs ${dup.away}; limpiando live + reconciliando server`);
+        useMatchStore.getState().closeLive();
+        try {
+          let dbId = matchCache.get(dup.id) ?? null;
+          if (!dbId) {
+            const { data } = await supabase
+              .from('matches').select('id')
+              .eq('user_id', uid).eq('local_id', dup.id).maybeSingle();
+            if (data?.id) dbId = data.id;
+          }
+          if (dbId) {
+            matchCache.set(dup.id, dbId);
+            await syncEventsFor(dup.events, dbId, uid);
+            await supabase.from('matches')
+              .update({ status: 'finished', home_score: dup.hs, away_score: dup.as })
+              .eq('id', dbId);
+          }
+        } catch (e) { console.warn('[sync] reconcile live-dup:', e); }
+        return;
+      }
+      // Partido en vivo legítimo en progreso → no tocar.
+      return;
+    }
 
     const { data: liveMaches } = await supabase
       .from('matches').select('*, events(*)')
@@ -466,6 +497,26 @@ async function downloadLiveFromServer(uid: string): Promise<void> {
 
     const m = liveMaches[0];
     const localId: string = m.local_id ?? m.id;
+
+    // ⚠️ GUARD anti-resurrección: si este partido YA está finalizado localmente
+    // (vive en `completed`), significa que el finish nunca llegó a pegar el
+    // status en el server (recarga/cierre antes del sync). NO reabrirlo como
+    // live — eso es lo que producía el duplicado "En Vivo" + "Historial".
+    // En su lugar reconciliamos: subimos los eventos del completed y flippeamos
+    // el status del server a 'finished'.
+    const alreadyCompleted = local.completed.find((cm) => cm.id === localId);
+    if (alreadyCompleted) {
+      console.log(`[sync] match ${m.home_name} vs ${m.away_name} ya finalizado local; reconciliando status server-side (no se reabre)`);
+      matchCache.set(localId, m.id);
+      for (const ev of m.events ?? []) {
+        if (ev.local_id) eventCache.add(ev.local_id);
+      }
+      await syncEventsFor(alreadyCompleted.events, m.id, uid);
+      await supabase.from('matches')
+        .update({ status: 'finished', home_score: alreadyCompleted.hs, away_score: alreadyCompleted.as })
+        .eq('id', m.id);
+      return;
+    }
 
     const events: HandballEvent[] = (m.events ?? [])
       .filter((e: any) => e.deleted_at == null)
@@ -930,6 +981,87 @@ export async function discardLiveMatchRemote(): Promise<void> {
     console.log('[sync] partido en vivo descartado server-side:', localId);
   } catch (err) {
     console.error('[sync] discard live failed:', err);
+  }
+}
+
+/**
+ * Finalizar partido en vivo: empuja status='finished' + score final al server
+ * de forma INMEDIATA (await), sin depender del debounce de syncAll.
+ *
+ * Sin esto, finishLive() solo movía el partido a `completed` en local y el push
+ * del status quedaba en manos del syncAll debounceado (1500ms). Si el usuario
+ * recargaba/cerraba antes, el server quedaba en status='live' para siempre y
+ * downloadLiveFromServer lo resucitaba como en vivo en la próxima carga
+ * (apareciendo duplicado: una vez en "En Vivo" y otra en "Historial").
+ *
+ * ⚠️ Llamar ANTES de finishLive() (necesita liveMatch.id y liveEvents del store
+ * mientras el partido sigue en estado 'live'). Captura el snapshot de forma
+ * sincrónica al entrar, así closeLive/finishLive posteriores no lo pisan.
+ *
+ * Además re-sube TODOS los liveEvents antes de flippear el status, así cualquier
+ * gol que haya fallado al sincronizar durante el partido se reintenta acá y no
+ * se pierde en el marcador final.
+ */
+export async function finishLiveMatchRemote(): Promise<void> {
+  if (!isSupabaseReady()) return;
+
+  // Snapshot sincrónico ANTES de cualquier await.
+  const state = useMatchStore.getState();
+  const localId = state.liveMatch.id;
+  if (!localId) return;
+  const liveEvents = state.liveEvents;
+  const homeName = state.liveMatch.home;
+  const awayName = state.liveMatch.away;
+  const homeColor = state.liveMatch.homeColor;
+  const awayColor = state.liveMatch.awayColor;
+  const matchDate = state.liveMatch.date;
+  const competition = String(state.liveMatch.competition ?? '');
+
+  try {
+    if (!userId) userId = await ensureAnonSession();
+    if (!userId) return;
+    if (!dataUid) dataUid = clubDataOwner(userId);
+    if (isClubReadOnly()) return;
+
+    const { h, a } = computeRunningScore(liveEvents);
+
+    // Encontrar o crear la fila del match.
+    let dbId = matchCache.get(localId);
+    if (!dbId) {
+      const { data: existing } = await supabase
+        .from('matches').select('id')
+        .eq('user_id', dataUid).eq('local_id', localId).maybeSingle();
+      if (existing?.id) {
+        dbId = existing.id;
+      } else {
+        const { data, error } = await supabase
+          .from('matches')
+          .insert({
+            user_id: dataUid, local_id: localId,
+            home_name: homeName, away_name: awayName,
+            home_score: h, away_score: a,
+            home_color: homeColor, away_color: awayColor,
+            match_date: matchDate, competition,
+            status: 'finished',
+          }).select('id').single();
+        if (error || !data) { console.warn('[sync] finish live insert error:', error?.message); return; }
+        dbId = data.id;
+      }
+      matchCache.set(localId, dbId);
+    }
+
+    // ⚠️ Subir eventos pendientes ANTES de flippear el status: si alguno falló
+    // durante el partido, este es el último reintento mientras siguen en memoria.
+    await syncEventsFor(liveEvents, dbId, dataUid);
+
+    const { error } = await supabase.from('matches')
+      .update({ home_score: h, away_score: a, status: 'finished' })
+      .eq('id', dbId);
+    if (error) { console.warn('[sync] finish live update error:', error.message); return; }
+
+    console.log('[sync] partido finalizado server-side:', localId, '→', dbId, `${h}-${a}`);
+  } catch (e) {
+    console.warn('[sync] finishLiveMatchRemote:', e);
   }
 }
 
