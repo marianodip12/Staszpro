@@ -1026,8 +1026,11 @@ export async function finishLiveMatchRemote(): Promise<void> {
     const { h, a } = computeRunningScore(liveEvents);
 
     // Encontrar o crear la fila del match.
-    let dbId = matchCache.get(localId);
-    if (!dbId) {
+    const cached = matchCache.get(localId);
+    let dbId: string;
+    if (cached) {
+      dbId = cached;
+    } else {
       const { data: existing } = await supabase
         .from('matches').select('id')
         .eq('user_id', dataUid).eq('local_id', localId).maybeSingle();
