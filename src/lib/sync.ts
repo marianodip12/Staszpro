@@ -1069,6 +1069,41 @@ export async function finishLiveMatchRemote(): Promise<void> {
 }
 
 /**
+ * Reabrir un partido finalizado: vuelve a poner status='live' en el server para
+ * que se puedan seguir cargando eventos en la interfaz en vivo.
+ *
+ * El store ya lo sacó de `completed` (reopenMatch), así que el partido queda
+ * SOLO como live — sin duplicado live+completed. Cuando el usuario vuelva a
+ * Finalizar, finishLiveMatchRemote lo regresa a 'finished'.
+ */
+export async function reopenMatchRemote(localId: string): Promise<void> {
+  if (!isSupabaseReady()) return;
+  try {
+    if (!userId) userId = await ensureAnonSession();
+    if (!userId) return;
+    if (!dataUid) dataUid = clubDataOwner(userId);
+    if (isClubReadOnly()) return;
+
+    let dbId: string | null = matchCache.get(localId) ?? null;
+    if (!dbId) {
+      const { data } = await supabase
+        .from('matches').select('id')
+        .eq('user_id', dataUid).eq('local_id', localId).maybeSingle();
+      if (data?.id) dbId = data.id;
+    }
+    if (!dbId) { console.log('[sync] reopen: match aún no está en server:', localId); return; }
+    matchCache.set(localId, dbId);
+
+    const { error } = await supabase.from('matches')
+      .update({ status: 'live' }).eq('id', dbId);
+    if (error) { console.warn('[sync] reopen match error:', error.message); return; }
+    console.log('[sync] partido reabierto server-side (status=live):', localId);
+  } catch (e) {
+    console.warn('[sync] reopenMatchRemote:', e);
+  }
+}
+
+/**
  * 👮 Admin: trae cualquier partido del servidor (de cualquier usuario) y lo
  * mapea a MatchSummary. Lo usa la página de análisis cuando el partido no
  * está en el store local — típicamente al tocar "Ver" en el panel admin.

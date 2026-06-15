@@ -30,7 +30,7 @@ import { COURT_ZONES, EVENT_TYPES, GOAL_QUADRANTS } from '@/domain/constants';
 import { computeMatchStats } from '@/domain/stats';
 import type { CourtZoneId, GoalQuadrantId, HandballEvent } from '@/domain/types';
 import { selectHomeTeam, useMatchStore } from '@/lib/store';
-import { softDeleteEventRemote } from '@/lib/sync';
+import { softDeleteEventRemote, reopenMatchRemote } from '@/lib/sync';
 import { AiAnalysisPanel } from '@/components/ai-analysis-panel';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
@@ -91,6 +91,9 @@ export const MatchAnalysisPage = ({ externalMatch, readonly: readonlyProp = fals
   const updateCompletedEvent = useMatchStore((s) => s.updateCompletedEvent);
   const removeCompletedEvent = useMatchStore((s) => s.removeCompletedEvent);
   const addCompletedEvent = useMatchStore((s) => s.addCompletedEvent);
+  const reopenMatch = useMatchStore((s) => s.reopenMatch);
+  const liveStatus = useMatchStore((s) => s.status);
+  const liveMatchId = useMatchStore((s) => s.liveMatch.id);
 
   const localMatch = useMemo(
     () => externalMatch ?? completed.find((m) => m.id === id) ?? null,
@@ -548,18 +551,38 @@ export const MatchAnalysisPage = ({ externalMatch, readonly: readonlyProp = fals
             Eventos del partido
           </h3>
           {!readonly && (
-            <button
-              type="button"
-              onClick={() => setShowEditPanel((v) => !v)}
-              className={cn(
-                'text-[11px] px-2.5 py-1 rounded border transition-colors flex items-center gap-1.5',
-                showEditPanel
-                  ? 'border-primary/40 bg-primary/10 text-primary'
-                  : 'border-border bg-surface text-muted-fg hover:text-fg',
-              )}
-            >
-              ✏️ {showEditPanel ? 'Ocultar editor' : 'Editar partido'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  // Si ya hay OTRO partido en vivo, no pisarlo.
+                  if (liveStatus === 'live' && liveMatchId !== match.id) {
+                    window.alert('Ya tenés un partido en vivo. Finalizalo antes de reabrir este.');
+                    return;
+                  }
+                  if (window.confirm('¿Reabrir el partido para seguir cargando eventos en vivo? Vuelve a "En Vivo" hasta que lo finalices de nuevo.')) {
+                    reopenMatch(match.id);
+                    void reopenMatchRemote(match.id);
+                    navigate('/app/live');
+                  }
+                }}
+                className="text-[11px] px-2.5 py-1 rounded border border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center gap-1.5"
+              >
+                🔴 Reabrir partido
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEditPanel((v) => !v)}
+                className={cn(
+                  'text-[11px] px-2.5 py-1 rounded border transition-colors flex items-center gap-1.5',
+                  showEditPanel
+                    ? 'border-primary/40 bg-primary/10 text-primary'
+                    : 'border-border bg-surface text-muted-fg hover:text-fg',
+                )}
+              >
+                ✏️ {showEditPanel ? 'Ocultar editor' : 'Editar partido'}
+              </button>
+            </div>
           )}
         </div>
         {showEditPanel && (

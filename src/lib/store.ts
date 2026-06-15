@@ -67,6 +67,7 @@ interface MatchStoreState {
   startLive: (info: Omit<LiveMatchInfo, 'id'> & { id?: string | null }) => void;
   closeLive: () => void;
   finishLive: () => void;                         // move live → completed
+  reopenMatch: (id: string) => void;              // completed → live (continuar cargando)
   setLiveEvents: (events: HandballEvent[]) => void;
   addLiveEvent: (event: Omit<HandballEvent, 'id' | 'hScore' | 'aScore'>) => void;
   updateLiveEvent: (id: string, patch: Partial<Omit<HandballEvent, 'id' | 'hScore' | 'aScore'>>) => void;
@@ -218,6 +219,44 @@ export const useMatchStore = create<MatchStoreState>()(
           completed: [summary, ...s.completed],
         });
       },
+
+      /**
+       * Reabrir un partido finalizado para seguir cargando eventos en la
+       * interfaz en vivo. Lo MUEVE de `completed` a estado live (no lo copia):
+       * queda solo como live, así no se duplica live+completed (que es lo que
+       * disparaba el bug). El reloj se posiciona al minuto del último evento.
+       * Al volver a Finalizar, regresa a `completed`.
+       */
+      reopenMatch: (id) =>
+        set((s) => {
+          // Si ya hay un partido en vivo, no pisarlo. La UI debe avisar antes.
+          if (s.status === 'live') return s;
+          const m = s.completed.find((x) => x.id === id);
+          if (!m) return s;
+
+          const events = rescoreEvents(m.events);
+          const lastMin = events.reduce((mx, e) => Math.max(mx, e.min ?? 0), 0);
+          const half: 1 | 2 = lastMin > 30 ? 2 : 1;
+          const seconds = Math.max(0, lastMin - (half === 2 ? 30 : 0)) * 60;
+
+          return {
+            status: 'live',
+            liveMatch: {
+              ...EMPTY_LIVE,
+              id: m.id,
+              home: m.home,
+              away: m.away,
+              homeColor: m.homeColor ?? EMPTY_LIVE.homeColor,
+              awayColor: m.awayColor ?? EMPTY_LIVE.awayColor,
+              competition: m.competition ?? 'Liga',
+              date: m.date ?? null,
+            },
+            liveEvents: events,
+            liveClock: { half, seconds, running: false },
+            // ⚠️ Sacarlo de completed: queda SOLO como live → sin duplicado.
+            completed: s.completed.filter((x) => x.id !== id),
+          };
+        }),
 
       setLiveEvents: (events) => set({ liveEvents: rescoreEvents(events) }),
       addLiveEvent: (incoming) =>
