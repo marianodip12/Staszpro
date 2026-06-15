@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { TicketChat } from '@/features/support/ticket-chat';
 import type { Ticket, TicketStatus } from '@/features/support/support-page';
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string; cls: string }[] = [
@@ -90,7 +91,6 @@ const AdminTicketCard = ({
   onUpdated: () => Promise<void>;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [reply, setReply] = useState(ticket.admin_reply ?? '');
   const [status, setStatus] = useState<TicketStatus>(ticket.status as TicketStatus);
   const [saving, setSaving] = useState(false);
 
@@ -99,14 +99,15 @@ const AdminTicketCard = ({
   });
   const statusInfo = STATUS_OPTIONS.find((s) => s.value === ticket.status) ?? STATUS_OPTIONS[0];
 
-  // RPC real: admin_update_ticket(p_ticket_id, p_status, p_admin_reply)
-  // → una sola llamada cambia reply + status.
-  const handleSave = async () => {
+  // RPC real: admin_update_ticket(p_ticket_id, p_status, p_admin_reply).
+  // El chat reemplaza la respuesta única; acá solo cambiamos el estado
+  // (preservamos admin_reply legacy para no pisarlo).
+  const handleSaveStatus = async () => {
     setSaving(true);
     const { error } = await supabase.rpc('admin_update_ticket', {
       p_ticket_id: ticket.id,
       p_status: status,
-      p_admin_reply: reply.trim() || null,
+      p_admin_reply: ticket.admin_reply ?? null,
     });
     setSaving(false);
     if (error) {
@@ -143,27 +144,19 @@ const AdminTicketCard = ({
 
       {expanded && (
         <div className="px-3 py-3 border-t border-border bg-bg/40 space-y-3">
+          {ticket.user_agent && (
+            <p className="text-[9px] text-muted-fg/70 truncate" title={ticket.user_agent}>
+              UA: {ticket.user_agent}
+            </p>
+          )}
+
+          {/* Conversación */}
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-muted-fg mb-1">Mensaje del usuario</p>
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">{ticket.message}</p>
-            {ticket.user_agent && (
-              <p className="text-[9px] text-muted-fg/70 mt-2 truncate" title={ticket.user_agent}>
-                UA: {ticket.user_agent}
-              </p>
-            )}
+            <p className="text-[10px] uppercase tracking-widest text-muted-fg mb-1.5">Conversación</p>
+            <TicketChat ticketId={ticket.id} isAdmin />
           </div>
 
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-muted-fg mb-1">Respuesta (visible para el usuario)</p>
-            <textarea
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              placeholder="Respondé al usuario…"
-              className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[80px]"
-              maxLength={4000}
-            />
-          </div>
-
+          {/* Estado */}
           <div>
             <p className="text-[10px] uppercase tracking-widest text-muted-fg mb-1.5">Estado</p>
             <div className="flex gap-1.5 flex-wrap">
@@ -186,8 +179,8 @@ const AdminTicketCard = ({
           </div>
 
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar cambios'}
+            <Button size="sm" onClick={handleSaveStatus} disabled={saving || status === ticket.status}>
+              {saving ? 'Guardando…' : 'Guardar estado'}
             </Button>
           </div>
         </div>

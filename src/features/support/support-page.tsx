@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/input';
 import { cn } from '@/lib/cn';
 import { BetaBanner } from '@/components/beta-banner';
+import { TicketChat } from '@/features/support/ticket-chat';
 
 // ─── Tipos compartidos con admin-tickets-panel ─────────────────────────
 // Nota: la BD usa `message`, no `body`. Tickets categorías en la BD están
@@ -237,17 +238,9 @@ const TicketCard = ({ ticket }: { ticket: Ticket }) => {
       </button>
 
       {expanded && (
-        <div className="px-3 py-3 border-t border-border bg-bg/40 space-y-3">
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-muted-fg mb-1">Mensaje</p>
-            <p className="text-sm whitespace-pre-wrap leading-relaxed">{ticket.message}</p>
-          </div>
-          {ticket.admin_reply && (
-            <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5">
-              <p className="text-[10px] uppercase tracking-widest text-primary mb-1">Respuesta del equipo</p>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{ticket.admin_reply}</p>
-            </div>
-          )}
+        <div className="px-3 py-3 border-t border-border bg-bg/40">
+          <p className="text-[10px] uppercase tracking-widest text-muted-fg mb-1.5">Conversación</p>
+          <TicketChat ticketId={ticket.id} />
         </div>
       )}
     </li>
