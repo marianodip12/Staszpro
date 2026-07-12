@@ -67,6 +67,16 @@ export interface PersonRef {
   number: number;
 }
 
+// ─── Lineup / formación ───────────────────────────────────────────────
+// Snapshot de quiénes estaban en cancha cuando ocurrió un evento.
+// `field` = los jugadores de campo (normalmente 6, o 7 con arquero afuera).
+// `goalkeeper` = el arquero, o null si la portería estaba vacía.
+// Se guarda por número de camiseta (estable dentro del partido).
+export interface LineupSnapshot {
+  field: number[];               // números de los jugadores de campo
+  goalkeeper: number | null;     // número del arquero, null = portería vacía
+}
+
 // ─── Event domain object ──────────────────────────────────────────────
 // This is the in-app shape. Mappers in events.ts convert DB rows to this.
 export interface HandballEvent {
@@ -87,6 +97,10 @@ export interface HandballEvent {
   shooter?: PersonRef | null;
   goalkeeper?: PersonRef | null;
   sanctioned?: PersonRef | null;
+
+  // Formación en cancha al momento del evento (mi equipo). Opcional:
+  // los eventos viejos no la tienen. Solo se setea para eventos de 'home'.
+  lineup?: LineupSnapshot | null;
 
   // Running score snapshot (set at persistence time)
   hScore: number;
