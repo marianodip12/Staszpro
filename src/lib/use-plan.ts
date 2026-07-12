@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
 
-export type Plan = 'free' | 'pro' | 'club' | 'elite';
+export type Plan = 'free' | 'pro' | 'pro_plus' | 'club' | 'elite';
 
 /**
  * MODO BETA: durante los primeros ~90 días desde el lanzamiento de v11,
@@ -61,7 +61,7 @@ export type PlanPreview = Plan | null;
 export const getPlanPreview = (): PlanPreview => {
   try {
     const v = localStorage.getItem(PREVIEW_KEY);
-    if (v === 'free' || v === 'pro' || v === 'club' || v === 'elite') return v;
+    if (v === 'free' || v === 'pro' || v === 'pro_plus' || v === 'club' || v === 'elite') return v;
   } catch { /* ignore */ }
   return null;
 };
@@ -128,7 +128,7 @@ export const usePlan = (): PlanInfo & { refresh: () => Promise<void> } => {
   // isAdmin stays true so the admin can still turn the preview off.
   const effectivePlan: Plan = preview ?? info.plan;
   const effectiveLimit = preview
-    ? (preview === 'club' || preview === 'elite' ? -1 : preview === 'pro' ? 50 : 10)
+    ? (preview === 'pro_plus' || preview === 'club' || preview === 'elite' ? -1 : preview === 'pro' ? 50 : 10)
     : info.matchLimit;
 
   return {
@@ -145,7 +145,7 @@ export const usePlan = (): PlanInfo & { refresh: () => Promise<void> } => {
 export const hasCompleteMode = (p: PlanOrInfo): boolean => {
   const { plan, betaActive } = resolve(p);
   if (betaActive) return true;
-  return plan === 'pro' || plan === 'club' || plan === 'elite';
+  return plan === 'pro' || plan === 'pro_plus' || plan === 'club' || plan === 'elite';
 };
 
 // Helper: ¿este plan tiene acceso a videos + IA?
@@ -153,6 +153,13 @@ export const hasVideoAndAI = (p: PlanOrInfo): boolean => {
   const { plan, betaActive } = resolve(p);
   if (betaActive) return true;
   return plan === 'club' || plan === 'elite';
+};
+
+// Helper: ¿este plan tiene el análisis por formación?
+export const hasFormationAnalysis = (p: PlanOrInfo): boolean => {
+  const { plan, betaActive } = resolve(p);
+  if (betaActive) return true;
+  return plan === 'pro_plus' || plan === 'club' || plan === 'elite';
 };
 
 /** Cantidad de días restantes de beta (round-down, mínimo 0). */

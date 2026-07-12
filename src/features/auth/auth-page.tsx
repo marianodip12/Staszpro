@@ -3,6 +3,13 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
+import type { ProfileType } from '@/lib/personal-profile-api';
+
+/**
+ * Guarda la elección de rol del usuario antes de confirmar el email.
+ * `auth.tsx` la aplica vía RPC en el primer login exitoso post-confirmación.
+ */
+const PENDING_PROFILE_TYPE_KEY = 'statzpro_pending_profile_type';
 
 interface AuthPageProps {
   mode: 'signin' | 'signup';
@@ -18,6 +25,12 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [profileType, setProfileType] = useState<ProfileType>(() => {
+    // Pre-selección desde query param (?role=player) — usado en la landing para
+    // llevar directo al signup como jugador.
+    const params = new URLSearchParams(location.search);
+    return params.get('role') === 'player' ? 'player' : 'coach';
+  });
   const [signupSuccess, setSignupSuccess] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -63,6 +76,14 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
 
     setLoading(true);
     try {
+      // Si es signup, guardamos la elección de rol en localStorage.
+      // auth.tsx la aplicará vía RPC en el primer login exitoso post-confirmación.
+      if (mode === 'signup') {
+        try {
+          localStorage.setItem(PENDING_PROFILE_TYPE_KEY, profileType);
+        } catch { /* ignore quota errors */ }
+      }
+
       const errMsg =
         mode === 'signup'
           ? await signUpWithPassword(email, password)
@@ -204,6 +225,46 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
                 </p>
               )}
             </div>
+
+            {mode === 'signup' && (
+              <div>
+                <label className="block text-xs font-medium text-muted-fg mb-1.5">
+                  ¿Cómo vas a usar StatzPro?
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setProfileType('coach')}
+                    className={cn(
+                      'text-left rounded-md border px-3 py-2.5 transition-colors',
+                      profileType === 'coach'
+                        ? 'border-primary bg-primary/10 text-fg'
+                        : 'border-border bg-bg text-muted-fg hover:border-border/80 hover:text-fg',
+                    )}
+                  >
+                    <div className="text-sm font-semibold">DT / Entrenador</div>
+                    <div className="text-[10px] leading-tight mt-0.5 text-muted-fg">
+                      Equipos, planteles, tácticas
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfileType('player')}
+                    className={cn(
+                      'text-left rounded-md border px-3 py-2.5 transition-colors',
+                      profileType === 'player'
+                        ? 'border-primary bg-primary/10 text-fg'
+                        : 'border-border bg-bg text-muted-fg hover:border-border/80 hover:text-fg',
+                    )}
+                  >
+                    <div className="text-sm font-semibold">Jugador</div>
+                    <div className="text-[10px] leading-tight mt-0.5 text-muted-fg">
+                      Mis stats partido a partido
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

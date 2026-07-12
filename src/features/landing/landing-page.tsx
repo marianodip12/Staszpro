@@ -60,7 +60,7 @@ export const LandingPage = () => {
             <>
               <Link
                 to="/login"
-                className="inline-flex text-xs md:text-sm px-3 py-1.5 rounded-md text-muted-fg hover:text-fg transition-colors"
+                className="hidden sm:inline-flex text-xs md:text-sm px-3 py-1.5 rounded-md text-muted-fg hover:text-fg transition-colors"
               >
                 {t.landing_nav_signin}
               </Link>
@@ -100,6 +100,14 @@ export const LandingPage = () => {
             {t.landing_hero_secondary}
           </a>
         </div>
+        {!isAuthenticated && (
+          <p className="mt-4 text-xs text-muted-fg">
+            ¿Sos jugador?{' '}
+            <Link to="/signup?role=player" className="text-primary hover:underline font-medium">
+              Registrate como jugador
+            </Link>
+          </p>
+        )}
       </section>
 
       {/* Features */}
@@ -139,6 +147,60 @@ export const LandingPage = () => {
 
       {/* Modes Showcase: Modo Rápido vs Modo Completo */}
       <ModesShowcase />
+
+      {/* Sección Jugador — CTA específico para el modo jugador */}
+      <section className="max-w-6xl mx-auto px-4 md:px-6 py-12 md:py-20 w-full">
+        <div className="rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/10 via-surface to-surface p-6 md:p-10 relative overflow-hidden">
+          {/* Decorative background */}
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative grid md:grid-cols-2 gap-6 md:gap-10 items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">
+                🤾 Para jugadores
+              </p>
+              <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-4 leading-tight">
+                También podés registrar<br />tus propios partidos
+              </h2>
+              <p className="text-sm md:text-base text-muted-fg leading-relaxed mb-6">
+                Si sos jugadora o jugador, StatzPro te deja llevar tus estadísticas personales
+                partido a partido. Goles, tiros, efectividad, asistencias, exclusiones — todo con
+                mapa de zonas y cuadrante del arco.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-fg mb-6">
+                <li className="flex items-start gap-2">
+                  <span className="text-primary mt-0.5">✓</span>
+                  <span>Marcá dónde tiraste y a qué parte del arco fue</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary mt-0.5">✓</span>
+                  <span>Modo rápido para cargar sin cuadrantes</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary mt-0.5">✓</span>
+                  <span>Historial completo con efectividad y balance ganados/perdidos</span>
+                </li>
+              </ul>
+              <Link
+                to={isAuthenticated ? '/app/player/home' : '/signup?role=player'}
+                className="inline-flex px-6 py-3 rounded-lg bg-primary text-primary-fg hover:bg-primary/90 transition-colors font-semibold text-sm md:text-base shadow-lg shadow-primary/20"
+              >
+                {isAuthenticated ? 'Ir a mi perfil' : 'Empezar como jugador'} →
+              </Link>
+            </div>
+
+            {/* Preview visual — un mini mock del stat card grid */}
+            <div className="grid grid-cols-3 gap-2">
+              <PlayerStatPreview label="Goles"       value="47"  color="text-primary" />
+              <PlayerStatPreview label="Tiros"       value="82" />
+              <PlayerStatPreview label="Efectividad" value="57%" color="text-primary" />
+              <PlayerStatPreview label="Asistencias" value="12" />
+              <PlayerStatPreview label="Pérdidas"    value="8" />
+              <PlayerStatPreview label="2 min"       value="3" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Demo */}
       <section id="demo" className="max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-20 w-full">
@@ -206,6 +268,15 @@ const FeatureCard = ({ icon, title, desc }: { icon: string; title: string; desc:
     <div className="text-3xl mb-3">{icon}</div>
     <h3 className="text-base font-semibold mb-2">{title}</h3>
     <p className="text-sm text-muted-fg leading-relaxed">{desc}</p>
+  </div>
+);
+
+const PlayerStatPreview = ({
+  label, value, color,
+}: { label: string; value: string; color?: string }) => (
+  <div className="rounded-md border border-border bg-bg/60 p-3">
+    <div className="text-[9px] uppercase tracking-widest text-muted-fg">{label}</div>
+    <div className={cn('mt-1 text-xl font-bold font-mono', color ?? 'text-fg')}>{value}</div>
   </div>
 );
 

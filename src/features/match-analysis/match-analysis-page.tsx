@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ProSectionLock } from '@/components/pro-section-lock';
+import { FormationAnalysisPanel } from './formation-analysis-panel';
 import { CourtView } from '@/components/handball/court-view';
 import { GoalGrid } from '@/components/handball/goal-grid';
 import {
@@ -456,6 +457,15 @@ export const MatchAnalysisPage = ({ externalMatch, readonly: readonlyProp = fals
             )}
           </div>
         </section>
+      </ProSectionLock>
+
+      {/* 📊 Análisis por formación */}
+      <ProSectionLock
+        title="Análisis por formación"
+        description="Cuántos goles hiciste y recibiste con cada combinación de jugadores en cancha. Comparalo entre formaciones para ver cuál te rinde más."
+        disabled={readonly}
+      >
+        <FormationAnalysisPanel events={allEvents} myTeam={myTeam} />
       </ProSectionLock>
 
       {/* Pérdidas — court view */}

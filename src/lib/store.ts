@@ -6,6 +6,7 @@ import { newId } from '@/domain/teams';
 import type {
   HandballEvent,
   HandballTeam,
+  LineupSnapshot,
   MatchStatus,
   MatchSummary,
   Player,
@@ -64,6 +65,14 @@ interface MatchStoreState {
   liveMatch: LiveMatchInfo;
   liveEvents: HandballEvent[];
   liveClock: ClockState;
+  /** Formación actual en cancha (mi equipo). Se adjunta a cada evento home. */
+  liveLineup: LineupSnapshot;
+  /** Reemplaza la formación completa en cancha. */
+  setLiveLineup: (lineup: LineupSnapshot) => void;
+  /** Mete a `num` en campo sacando a `outNum` (o al primero si null). */
+  swapFieldPlayer: (outNum: number | null, inNum: number) => void;
+  /** Cambia el arquero (number) o lo saca (null = portería vacía). */
+  setGoalkeeper: (num: number | null) => void;
   startLive: (info: Omit<LiveMatchInfo, 'id'> & { id?: string | null }) => void;
   closeLive: () => void;
   finishLive: () => void;                         // move live → completed
@@ -172,6 +181,36 @@ export const useMatchStore = create<MatchStoreState>()(
       liveMatch: EMPTY_LIVE,
       liveEvents: [],
       liveClock: INITIAL_CLOCK,
+      liveLineup: { field: [], goalkeeper: null },
+
+      setLiveLineup: (lineup) => set({ liveLineup: lineup }),
+      swapFieldPlayer: (outNum, inNum) =>
+        set((s) => {
+          const field = [...s.liveLineup.field];
+          const gk = s.liveLineup.goalkeeper;
+          // Máx de handball: 6 con arquero, 7 con arco vacío
+          const maxField = gk == null ? 7 : 6;
+          // Si ya está en campo, no duplicar
+          if (field.includes(inNum)) return {};
+          if (outNum != null) {
+            const idx = field.indexOf(outNum);
+            if (idx >= 0) field[idx] = inNum;
+            else if (field.length < maxField) field.push(inNum);
+            else return {}; // sin lugar
+          } else {
+            if (field.length >= maxField) return {}; // sin lugar
+            field.push(inNum);
+          }
+          return { liveLineup: { ...s.liveLineup, field } };
+        }),
+      setGoalkeeper: (num) =>
+        set((s) => {
+          // Si el jugador que se pone de arquero estaba en campo, sacarlo del campo
+          const cleanedField = num != null
+            ? s.liveLineup.field.filter((n) => n !== num)
+            : s.liveLineup.field;
+          return { liveLineup: { field: cleanedField, goalkeeper: num } };
+        }),
 
       startLive: (info) =>
         set({
@@ -179,6 +218,7 @@ export const useMatchStore = create<MatchStoreState>()(
           liveMatch: { ...EMPTY_LIVE, ...info, id: info.id ?? newId() },
           liveEvents: [],
           liveClock: INITIAL_CLOCK,
+          liveLineup: { field: [], goalkeeper: null },
         }),
 
       closeLive: () =>
@@ -187,6 +227,7 @@ export const useMatchStore = create<MatchStoreState>()(
           liveMatch: EMPTY_LIVE,
           liveEvents: [],
           liveClock: INITIAL_CLOCK,
+          liveLineup: { field: [], goalkeeper: null },
         }),
 
       /**
@@ -261,6 +302,12 @@ export const useMatchStore = create<MatchStoreState>()(
       setLiveEvents: (events) => set({ liveEvents: rescoreEvents(events) }),
       addLiveEvent: (incoming) =>
         set((s) => {
+          // Adjuntamos la formación actual solo a los eventos de mi equipo
+          // (home), y solo si hay al menos un jugador de campo cargado.
+          const attachLineup =
+            incoming.team === 'home' && s.liveLineup.field.length > 0
+              ? { field: [...s.liveLineup.field], goalkeeper: s.liveLineup.goalkeeper }
+              : null;
           const nextEvents = [
             ...s.liveEvents,
             {
@@ -268,9 +315,25 @@ export const useMatchStore = create<MatchStoreState>()(
               id: newId(),
               hScore: 0,
               aScore: 0,
+              lineup: attachLineup,
             } as HandballEvent,
           ];
-          return { liveEvents: rescoreEvents(nextEvents) };
+          // 🟨 Auto-sacar del campo/arco al jugador si el evento es una sanción
+          // (2min o roja) de mi equipo — así el slidebar refleja al toque.
+          const isExclusion = incoming.type === 'exclusion' || incoming.type === 'red_card';
+          let nextLineup = s.liveLineup;
+          if (isExclusion && incoming.team === 'home' && incoming.sanctioned) {
+            const num = incoming.sanctioned.number;
+            const wasInField = s.liveLineup.field.includes(num);
+            const wasGk = s.liveLineup.goalkeeper === num;
+            if (wasInField || wasGk) {
+              nextLineup = {
+                field: wasInField ? s.liveLineup.field.filter((n) => n !== num) : s.liveLineup.field,
+                goalkeeper: wasGk ? null : s.liveLineup.goalkeeper,
+              };
+            }
+          }
+          return { liveEvents: rescoreEvents(nextEvents), liveLineup: nextLineup };
         }),
       updateLiveEvent: (id, patch) =>
         set((s) => {
@@ -356,6 +419,7 @@ export const useMatchStore = create<MatchStoreState>()(
         status: s.status,
         liveMatch: s.liveMatch,
         liveEvents: s.liveEvents,
+        liveLineup: s.liveLineup,
         liveClock: { ...s.liveClock, running: false }, // always reload paused
       }),
     },

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { usePlan, type Plan } from '@/lib/use-plan';
+import { useProfileType } from '@/lib/use-profile-type';
 import { cn } from '@/lib/cn';
 import { CheckoutDialog, type CheckoutPlan } from './checkout-dialog';
 import { betaDaysLeft } from '@/lib/use-plan';
@@ -11,12 +12,18 @@ type BillingCycle = 'monthly' | 'annual';
 
 export const PlansPage = () => {
   const { plan: currentPlan, matchCount, matchLimit, loading, betaActive } = usePlan();
+  const { isPlayer: profileIsPlayer } = useProfileType();
   const [cycle, setCycle] = useState<BillingCycle>('annual');
   const [checkoutPlan, setCheckoutPlan] = useState<CheckoutPlan | null>(null);
   const [donateOpen, setDonateOpen] = useState(false);
+  // Toggle Entrenador/Jugador — arranca en el rol del user (o coach si no lo sabemos)
+  const [audience, setAudience] = useState<'coach' | 'player'>(() =>
+    profileIsPlayer ? 'player' : 'coach',
+  );
+  const isPlayer = audience === 'player';
 
   const handleSelectPlan = (plan: Plan) => {
-    // ⚠️ BETA: pagos bloqueados hasta el fin de la beta (31/8). Todos los
+    // ⚠️ BETA: pagos bloqueados hasta el fin de la beta (30/8). Todos los
     // planes están desbloqueados gratis; ofrecemos donar en su lugar.
     if (betaActive) {
       setDonateOpen(true);
@@ -40,10 +47,12 @@ export const PlansPage = () => {
         <p className="text-[10px] tracking-[0.2em] text-muted-fg uppercase">StatzPro</p>
         <h1 className="text-2xl md:text-3xl font-bold">Empezá gratis. Crece con vos.</h1>
         <p className="text-sm text-muted-fg max-w-xl mx-auto">
-          10 partidos gratis para probar la app. Pasate a Pro o Club cuando quieras más análisis.
+          {isPlayer
+            ? '10 partidos gratis para probar tus estadísticas personales. Pasate a Pro cuando quieras análisis ilimitado.'
+            : '10 partidos gratis para probar la app. Pasate a Pro o Club cuando quieras más análisis.'}
         </p>
         <div className="max-w-xl mx-auto rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-left">
-          <p className="text-sm font-semibold text-primary">🎉 Probá gratis hasta el 31 de agosto</p>
+          <p className="text-sm font-semibold text-primary">🚀 Beta abierta: todo gratis hasta el 30 de agosto</p>
           <p className="text-xs text-muted-fg mt-1 leading-relaxed">
             Durante la beta todos los planes están desbloqueados y los pagos están desactivados.
             Si la app te sirve y querés bancar el proyecto, podés{' '}
@@ -63,6 +72,34 @@ export const PlansPage = () => {
         )}
       </div>
 
+      {/* Toggle Entrenador / Jugador */}
+      <div className="flex justify-center">
+        <div className="inline-flex bg-surface border border-border rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setAudience('coach')}
+            className={cn(
+              'px-4 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5',
+              !isPlayer ? 'bg-primary text-primary-fg' : 'text-muted-fg hover:text-fg',
+            )}
+          >
+            <span>🎯</span>
+            Entrenador
+          </button>
+          <button
+            type="button"
+            onClick={() => setAudience('player')}
+            className={cn(
+              'px-4 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5',
+              isPlayer ? 'bg-primary text-primary-fg' : 'text-muted-fg hover:text-fg',
+            )}
+          >
+            <span>🤾</span>
+            Jugador
+          </button>
+        </div>
+      </div>
+
       {/* Modos rápido vs completo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <ModeCard
@@ -76,8 +113,10 @@ export const PlansPage = () => {
           icon="📊"
           color="#378ADD"
           title="Modo Completo"
-          tag="PRO+"
-          description="Mapa de tiros, eficacia por zona, análisis por jugador, tendencias y comparativas."
+          tag={isPlayer ? 'PRO' : 'PRO+'}
+          description={isPlayer
+            ? 'Mapa de tiros, eficacia por zona, análisis por partido y evolución.'
+            : 'Mapa de tiros, eficacia por zona, análisis por jugador, tendencias y comparativas.'}
         />
       </div>
 
@@ -108,9 +147,12 @@ export const PlansPage = () => {
         </div>
       </div>
 
-      {/* 4 plans grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* FREE */}
+      {/* Plans grid — 2 columnas para player (Free, Pro), 4 para coach */}
+      <div className={cn(
+        'grid grid-cols-1 gap-3',
+        isPlayer ? 'md:grid-cols-2 max-w-3xl mx-auto' : 'md:grid-cols-2 lg:grid-cols-4',
+      )}>
+        {/* FREE — mismo para ambos */}
         <PlanCard
           name="FREE"
           tagIcon="⚡"
@@ -118,8 +160,14 @@ export const PlansPage = () => {
           tagTextColor="#5DCAA5"
           price="$0"
           priceSuffix="para siempre"
-          tagline="Probá la app con tu equipo"
-          features={[
+          tagline={isPlayer ? 'Probá con tus primeros partidos' : 'Probá la app con tu equipo'}
+          features={isPlayer ? [
+            { text: 'Modo Rápido completo', highlight: false },
+            { text: 'Hasta 10 partidos personales', highlight: 'warn' },
+            { text: 'Stats básicas', highlight: false },
+            { text: 'Historial completo', highlight: false },
+            { text: 'Sin mapa de tiros', highlight: 'muted' },
+          ] : [
             { text: 'Modo Rápido completo', highlight: false },
             { text: 'Equipos ilimitados', highlight: false },
             { text: 'Hasta 10 partidos', highlight: 'warn' },
@@ -134,17 +182,32 @@ export const PlansPage = () => {
           isCurrent={currentPlan === 'free'}
         />
 
-        {/* PRO */}
+        {/* PRO — precio diferenciado según audience */}
         <PlanCard
           name="PRO"
           tagIcon="⚡+📊"
           tagColor="#185FA5"
           tagTextColor="#B5D4F4"
-          price={cycle === 'annual' ? '$45' : '$5'}
+          price={
+            isPlayer
+              ? (cycle === 'annual' ? '$27' : '$3')
+              : (cycle === 'annual' ? '$45' : '$5')
+          }
           priceSuffix={cycle === 'annual' ? '/año' : '/mes'}
-          priceSubtext={cycle === 'annual' ? '≈ 5.360 ARS/mes' : '≈ 7.150 ARS/mes'}
+          priceSubtext={
+            isPlayer
+              ? (cycle === 'annual' ? '≈ 3.220 ARS/mes' : '≈ 4.290 ARS/mes')
+              : (cycle === 'annual' ? '≈ 5.360 ARS/mes' : '≈ 7.150 ARS/mes')
+          }
           tagline="Modo Completo desbloqueado"
-          features={[
+          features={isPlayer ? [
+            { text: 'Todo lo de Free', highlight: false },
+            { text: 'Partidos ilimitados', highlight: false },
+            { text: 'Mapa de tiros + zonas', highlight: 'good' },
+            { text: 'Cuadrante del arco', highlight: 'good' },
+            { text: 'Análisis por período', highlight: 'good' },
+            { text: 'Sub-motivos de pérdida', highlight: false },
+          ] : [
             { text: 'Todo lo de Free', highlight: false },
             { text: 'Partidos ilimitados', highlight: false },
             { text: 'Modo Completo', highlight: 'good' },
@@ -160,58 +223,87 @@ export const PlansPage = () => {
           recommended
         />
 
-        {/* CLUB */}
-        <PlanCard
-          name="CLUB"
-          tagIcon="🎬+🤖"
-          tagColor="#0F6E56"
-          tagTextColor="#9FE1CB"
-          price={cycle === 'annual' ? '$144' : '$15'}
-          priceSuffix={cycle === 'annual' ? '/año' : '/mes'}
-          priceSubtext={cycle === 'annual' ? '3 usuarios · ≈17K ARS/mes' : '3 usuarios incluidos'}
-          tagline="Video + IA + cuerpo técnico"
-          features={[
-            { text: 'Todo lo de Pro', highlight: false },
-            { text: '3 cuentas DT/staff', highlight: false },
-            { text: '🎬 Video sincronizado', highlight: 'good' },
-            { text: '🎬 Sube a YouTube del club', highlight: 'good' },
-            { text: '🤖 Análisis con IA', highlight: 'good' },
-            { text: '🤖 Compilador de jugadas', highlight: 'good' },
-            { text: 'Vista de arquero avanzada', highlight: false },
-            { text: 'Soporte WhatsApp', highlight: false },
-          ]}
-          ctaLabel={currentPlan === 'club' ? 'Plan actual' : 'Probar 14 días gratis'}
-          ctaDisabled={currentPlan === 'club'}
-          onClick={() => handleSelectPlan('club')}
-          isCurrent={currentPlan === 'club'}
-          starred
-        />
+        {/* PRO + / CLUB / ELITE — solo para entrenadores */}
+        {!isPlayer && (
+          <>
+            {/* PRO + */}
+            <PlanCard
+              name="PRO +"
+              tagIcon="🧩+📈"
+              tagColor="#7C3AED"
+              tagTextColor="#DDD6FE"
+              price={cycle === 'annual' ? '$75' : '$8'}
+              priceSuffix={cycle === 'annual' ? '/año' : '/mes'}
+              priceSubtext={cycle === 'annual' ? '≈ 8.940 ARS/mes' : '≈ 11.440 ARS/mes'}
+              tagline="Análisis táctico por formación"
+              features={[
+                { text: 'Todo lo de Pro', highlight: false },
+                { text: 'Partidos ilimitados', highlight: false },
+                { text: '🧩 Análisis por formación', highlight: 'good' },
+                { text: '📈 Evolución del marcador por formación', highlight: 'good' },
+                { text: 'Modo Super completo en vivo', highlight: 'good' },
+                { text: 'Línea temporal + gráfico de score', highlight: 'good' },
+              ]}
+              ctaLabel={currentPlan === 'pro_plus' ? 'Plan actual' : 'Probar 7 días gratis'}
+              ctaDisabled={currentPlan === 'pro_plus'}
+              onClick={() => handleSelectPlan('pro_plus')}
+              isCurrent={currentPlan === 'pro_plus'}
+            />
 
-        {/* ELITE */}
-        <PlanCard
-          name="ELITE"
-          tagIcon="🏆"
-          tagColor="#854F0B"
-          tagTextColor="#FAC775"
-          price="A consultar"
-          priceSuffix=""
-          priceSubtext="según necesidades"
-          tagline="Personalización total para el club"
-          features={[
-            { text: 'Todo lo de Club', highlight: false },
-            { text: 'Usuarios ilimitados', highlight: false },
-            { text: 'Multi-equipo (formativas)', highlight: false },
-            { text: 'Features a pedido', highlight: false },
-            { text: 'Reportes federación', highlight: false },
-            { text: 'Capacitación al staff', highlight: false },
-            { text: 'Integraciones a medida', highlight: false },
-            { text: 'Soporte dedicado', highlight: false },
-          ]}
-          ctaLabel="Hablemos por WhatsApp"
-          onClick={() => handleSelectPlan('elite')}
-          isCurrent={currentPlan === 'elite'}
-          isElite
-        />
+            {/* CLUB */}
+            <PlanCard
+              name="CLUB"
+              tagIcon="🎬+🤖"
+              tagColor="#0F6E56"
+              tagTextColor="#9FE1CB"
+              price={cycle === 'annual' ? '$144' : '$15'}
+              priceSuffix={cycle === 'annual' ? '/año' : '/mes'}
+              priceSubtext={cycle === 'annual' ? '3 usuarios · ≈17K ARS/mes' : '3 usuarios incluidos'}
+              tagline="Video + IA + cuerpo técnico"
+              features={[
+                { text: 'Todo lo de Pro', highlight: false },
+                { text: '3 cuentas DT/staff', highlight: false },
+                { text: '🎬 Video sincronizado', highlight: 'good' },
+                { text: '🎬 Sube a YouTube del club', highlight: 'good' },
+                { text: '🤖 Análisis con IA', highlight: 'good' },
+                { text: '🤖 Compilador de jugadas', highlight: 'good' },
+                { text: 'Vista de arquero avanzada', highlight: false },
+                { text: 'Soporte WhatsApp', highlight: false },
+              ]}
+              ctaLabel={currentPlan === 'club' ? 'Plan actual' : 'Probar 14 días gratis'}
+              ctaDisabled={currentPlan === 'club'}
+              onClick={() => handleSelectPlan('club')}
+              isCurrent={currentPlan === 'club'}
+              starred
+            />
+
+            {/* ELITE */}
+            <PlanCard
+              name="ELITE"
+              tagIcon="🏆"
+              tagColor="#854F0B"
+              tagTextColor="#FAC775"
+              price="A consultar"
+              priceSuffix=""
+              priceSubtext="según necesidades"
+              tagline="Personalización total para el club"
+              features={[
+                { text: 'Todo lo de Club', highlight: false },
+                { text: 'Usuarios ilimitados', highlight: false },
+                { text: 'Multi-equipo (formativas)', highlight: false },
+                { text: 'Features a pedido', highlight: false },
+                { text: 'Reportes federación', highlight: false },
+                { text: 'Capacitación al staff', highlight: false },
+                { text: 'Integraciones a medida', highlight: false },
+                { text: 'Soporte dedicado', highlight: false },
+              ]}
+              ctaLabel="Hablemos por WhatsApp"
+              onClick={() => handleSelectPlan('elite')}
+              isCurrent={currentPlan === 'elite'}
+              isElite
+            />
+          </>
+        )}
       </div>
 
       {/* Trust badges */}

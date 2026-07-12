@@ -34,6 +34,36 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ANON_UID_KEY = 'hp_anon_uid';
 
+const PENDING_PROFILE_TYPE_KEY = 'statzpro_pending_profile_type';
+
+/**
+ * Aplica la elección de rol que el user hizo durante el signup (guardada
+ * en localStorage por auth-page.tsx). Se llama una sola vez, en el primer
+ * login exitoso post-confirmación de email. Después borra la clave.
+ *
+ * Silenciosa: si falla, se logea pero no se propaga (no queremos romper
+ * el login por esto).
+ */
+async function applyPendingProfileType(): Promise<void> {
+  let pending: string | null = null;
+  try {
+    pending = localStorage.getItem(PENDING_PROFILE_TYPE_KEY);
+  } catch { return; }
+  if (pending !== 'coach' && pending !== 'player') return;
+
+  try {
+    const { error } = await supabase.rpc('set_my_profile_type', { new_type: pending });
+    if (error) {
+      console.error('[auth] set_my_profile_type failed:', error.message);
+      // No borramos la clave para reintentar en el próximo login.
+      return;
+    }
+    localStorage.removeItem(PENDING_PROFILE_TYPE_KEY);
+  } catch (err) {
+    console.error('[auth] applyPendingProfileType error:', err);
+  }
+}
+
 /**
  * Migrates data from an old user_id (anonymous) to a new one (real account).
  * Uses a SECURITY DEFINER function in Supabase to bypass RLS.
@@ -84,6 +114,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await migrateAnonDataToRealUser(oldUserId, user.id);
           }
           localStorage.setItem(ANON_UID_KEY, user.id);
+          // Aplicar rol elegido durante el signup (si es el primer login post-confirmación).
+          await applyPendingProfileType();
         } else if (user && !user.email) {
           // Anonymous user
           localStorage.setItem(ANON_UID_KEY, user.id);
@@ -102,6 +134,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await migrateAnonDataToRealUser(oldUserId, user.id);
           }
           localStorage.setItem(ANON_UID_KEY, user.id);
+          // Aplicar rol elegido durante el signup (idempotente: la clave se borra si funciona).
+          await applyPendingProfileType();
         } else if (user && !user.email) {
           localStorage.setItem(ANON_UID_KEY, user.id);
         }

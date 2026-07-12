@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/cn';
 import { AdminTicketsPanel } from './admin-tickets-panel';
+import { Link } from 'react-router-dom';
+import { countAdminUnreadSupportMessages } from './admin-support-unread';
 
 interface AdminMatch {
   match_id: string;
@@ -63,6 +65,7 @@ export const AdminPage = () => {
   const [matches, setMatches] = useState<AdminMatch[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [unreadChats, setUnreadChats] = useState(0);
   const [visits, setVisits] = useState<VisitStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [seedingUser, setSeedingUser] = useState<string | null>(null);
@@ -126,6 +129,19 @@ export const AdminPage = () => {
     setLoading(true);
     Promise.all([loadMatches(), loadUsers(), loadPayments(), loadVisits()]).finally(() => setLoading(false));
   }, [isAdmin, loadMatches, loadUsers, loadPayments, loadVisits]);
+
+  // Polling de chats sin leer (cada 15s en el panel admin)
+  useEffect(() => {
+    if (isAdmin !== true) return;
+    let cancelled = false;
+    const check = async () => {
+      const n = await countAdminUnreadSupportMessages();
+      if (!cancelled) setUnreadChats(n);
+    };
+    void check();
+    const iv = window.setInterval(check, 15000);
+    return () => { cancelled = true; window.clearInterval(iv); };
+  }, [isAdmin]);
 
   const handlePaymentStatus = async (paymentId: string, newStatus: 'paid' | 'rejected' | 'cancelled', email: string, plan: string) => {
     const action = newStatus === 'paid' ? 'aprobar' : newStatus === 'rejected' ? 'rechazar' : 'cancelar';
@@ -212,13 +228,27 @@ export const AdminPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          🛡️ Panel de Administración
-        </h1>
-        <p className="text-sm text-muted-fg mt-1">
-          Vista global de todos los usuarios y partidos del sistema.
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            🛡️ Panel de Administración
+          </h1>
+          <p className="text-sm text-muted-fg mt-1">
+            Vista global de todos los usuarios y partidos del sistema.
+          </p>
+        </div>
+        <Link
+          to="/app/admin/support"
+          className="relative inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-fg text-sm font-semibold hover:bg-primary/90"
+        >
+          <span>💬</span>
+          Chats en vivo
+          {unreadChats > 0 && (
+            <span className="text-[10px] font-bold bg-danger text-white rounded-full min-w-[18px] h-4 px-1 flex items-center justify-center">
+              {unreadChats}
+            </span>
+          )}
+        </Link>
       </div>
 
       {/* Dashboard stats */}
