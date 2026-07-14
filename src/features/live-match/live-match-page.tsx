@@ -31,7 +31,8 @@ import { EventEditDialog } from './event-edit-dialog';
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import { LiveMatchFree } from './live-match-free';
 import { SuperpowerBar } from './superpower-bar';
-import { softDeleteEventRemote, discardLiveMatchRemote, finishLiveMatchRemote } from '@/lib/sync';
+import { LineupSlidebar } from './lineup-slidebar';
+import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
 import { hasCompleteMode, usePlan } from '@/lib/use-plan';
 import { isClubReadOnly } from '@/lib/club-context';
 
@@ -125,7 +126,7 @@ const adhocGoalkeepersFor = (events: HandballEvent[], gkTeam: Team): PersonRef[]
   return Array.from(byNumber.values()).sort((a, b) => a.number - b.number);
 };
 
-type Mode = 'quick' | 'full';
+type Mode = 'quick' | 'full' | 'super_full';
 
 // Shot flow state: once the user taps a goal quadrant, we enter the
 // "pending shot" state. Steps: outcome → shooter → (maybe) goalkeeper.
@@ -150,6 +151,7 @@ const LiveMatchPagePro = () => {
   const status      = useMatchStore((s) => s.status);
   const match       = useMatchStore((s) => s.liveMatch);
   const events      = useMatchStore((s) => s.liveEvents);
+  const liveLineup  = useMatchStore((s) => s.liveLineup);
   const clock       = useMatchStore((s) => s.liveClock);
   const setClock    = useMatchStore((s) => s.setLiveClock);
   const addEvent    = useMatchStore((s) => s.addLiveEvent);
@@ -174,6 +176,7 @@ const LiveMatchPagePro = () => {
   const [pendingShot, setPendingShot] = useState<PendingShot | null>(null);
   const [pendingTagged, setPendingTagged] = useState<PendingTagged | null>(null);
   const [editingEvent, setEditingEvent] = useState<HandballEvent | null>(null);
+  
 
   if (status !== 'live' || !match.home) {
     return (
@@ -418,11 +421,6 @@ const LiveMatchPagePro = () => {
 
   const handleFinish = () => {
     if (window.confirm(t.live_finish_confirm)) {
-      // ⚠️ Primero empujar el finish al server (lee liveMatch.id + liveEvents
-      // del store mientras siguen en estado 'live'), recién después mover a
-      // completed local. Si no, el server queda en 'live' y el partido se
-      // reabre/duplica al recargar.
-      void finishLiveMatchRemote();
       finishLive();
       navigate('/app');
     }
@@ -456,7 +454,18 @@ const LiveMatchPagePro = () => {
   }
 
   return (
-    <div className="space-y-3 pb-4">
+    <div className="pb-4">
+      {/* 🧩 Slidebar lateral fijo — visible en todos los breakpoints */}
+      <aside
+        className="flex flex-col fixed left-2 w-14 top-2 bottom-16 z-40
+                   md:left-4 md:w-16 md:bottom-4
+                   lg:left-[272px] lg:w-24"
+      >
+        <LineupSlidebar />
+      </aside>
+
+      {/* Contenido principal — padding-left en cada breakpoint para no tapar el slidebar fijo */}
+      <div className="space-y-3 min-w-0 pl-16 md:pl-20 lg:pl-28">
       <SuperpowerBar />
       <Scoreboard
         home={match.home}
@@ -504,20 +513,32 @@ const LiveMatchPagePro = () => {
       {/* Mode + auto-switch */}
       <div className="flex gap-2">
         <div className="rounded-lg border border-border bg-surface p-1 flex flex-1">
-          {(['full', 'quick'] as const).map((m) => (
+          {(['full', 'quick', 'super_full'] as const).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
               className={cn(
-                'flex-1 h-8 text-xs font-medium rounded-md transition-colors',
+                'flex-1 h-8 text-[11px] font-medium rounded-md transition-colors px-1',
                 mode === m ? 'bg-primary/20 text-primary' : 'text-muted-fg hover:text-fg',
               )}
             >
-              {m === 'full' ? t.live_mode_full : t.live_mode_quick}
+              {m === 'full' ? t.live_mode_full : m === 'quick' ? t.live_mode_quick : 'Super completo'}
             </button>
           ))}
         </div>
+
+      {mode === 'super_full' && liveLineup.field.length === 0 && (
+        <div className="col-span-full basis-full order-last w-full rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 flex items-start gap-2 text-[11px]">
+          <span className="text-base leading-none">⚠️</span>
+          <div className="flex-1">
+            <div className="font-medium text-warning">Falta cargar la formación</div>
+            <div className="text-muted-fg leading-relaxed mt-0.5">
+              En modo <strong>Super completo</strong> cada evento se guarda con la formación que tenías en cancha. Abrí el slidebar de formación y marcá los jugadores antes de registrar eventos, sino van a quedar sin lineup asociado.
+            </div>
+          </div>
+        </div>
+      )}
         <button
           type="button"
           onClick={() => setAutoSwitch(!autoSwitch)}
@@ -742,6 +763,7 @@ const LiveMatchPagePro = () => {
           priorityZone={'priorityZone' in pickerContext ? pickerContext.priorityZone : null}
         />
       )}
+      </div>
     </div>
   );
 };
