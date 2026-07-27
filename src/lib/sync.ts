@@ -208,6 +208,7 @@ async function syncEventsFor(events: HandballEvent[], matchDbId: string, uid: st
         sanctioned_name: ev.sanctioned?.name ?? null, sanctioned_number: ev.sanctioned?.number ?? null,
         h_score: ev.hScore, a_score: ev.aScore,
         completed: ev.completed, quick_mode: ev.quickMode,
+        lineup: ev.lineup ?? null,
       });
 
       if (!error) eventCache.add(ev.id);
@@ -536,6 +537,7 @@ async function downloadLiveFromServer(uid: string): Promise<void> {
       aScore: e.a_score ?? 0,
       quickMode: e.quick_mode ?? false,
       completed: e.completed ?? true,
+      lineup: e.lineup ?? null,
     }));
 
     matchCache.set(localId, m.id);
@@ -628,6 +630,7 @@ async function downloadFromServer(uid: string): Promise<void> {
         aScore: e.a_score ?? 0,
         quickMode: e.quick_mode ?? false,
         completed: e.completed ?? true,
+        lineup: e.lineup ?? null,
       }));
 
       newOnes.push({
@@ -1152,6 +1155,7 @@ export async function fetchMatchAsAdmin(idParam: string): Promise<MatchSummary |
         aScore: e.a_score ?? 0,
         quickMode: e.quick_mode ?? false,
         completed: e.completed ?? true,
+        lineup: e.lineup ?? null,
       }));
 
     return {
