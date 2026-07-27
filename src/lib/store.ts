@@ -76,6 +76,7 @@ interface MatchStoreState {
   startLive: (info: Omit<LiveMatchInfo, 'id'> & { id?: string | null }) => void;
   closeLive: () => void;
   finishLive: () => void;                         // move live → completed
+  reopenMatch: (id: string) => void;              // move completed → live (inverse of finishLive)
   setLiveEvents: (events: HandballEvent[]) => void;
   addLiveEvent: (event: Omit<HandballEvent, 'id' | 'hScore' | 'aScore'>) => void;
   updateLiveEvent: (id: string, patch: Partial<Omit<HandballEvent, 'id' | 'hScore' | 'aScore'>>) => void;
@@ -257,6 +258,35 @@ export const useMatchStore = create<MatchStoreState>()(
           liveEvents: [],
           liveClock: INITIAL_CLOCK,
           completed: [summary, ...s.completed],
+        });
+      },
+
+      /**
+       * Reabre un partido finalizado: lo saca de `completed` y lo pone como
+       * live para poder seguir cargando eventos. Inverso de finishLive.
+       * Guard: si ya hay un live activo, no hace nada (el frontend debería
+       * alertar antes de llamar, pero por las dudas).
+       */
+      reopenMatch: (id: string) => {
+        const s = get();
+        if (s.status === 'live') return;
+        const match = s.completed.find((m) => m.id === id);
+        if (!match) return;
+        set({
+          status: 'live',
+          liveMatch: {
+            id: match.id,
+            home: match.home,
+            away: match.away,
+            homeColor: match.homeColor,
+            awayColor: match.awayColor,
+            competition: match.competition ?? 'Liga',
+            round: null,
+            date: match.date,
+          },
+          liveEvents: match.events,
+          liveClock: INITIAL_CLOCK,
+          completed: s.completed.filter((m) => m.id !== id),
         });
       },
 
