@@ -33,7 +33,7 @@ import { LiveMatchFree } from './live-match-free';
 import { SuperpowerBar } from './superpower-bar';
 import { LineupSlidebar } from './lineup-slidebar';
 import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
-import { hasCompleteMode, usePlan } from '@/lib/use-plan';
+import { hasCompleteMode, hasFormationAnalysis, usePlan } from '@/lib/use-plan';
 import { isClubReadOnly } from '@/lib/club-context';
 
 // ─── Plan-aware wrapper ──────────────────────────────────────────────────────
@@ -169,6 +169,7 @@ const LiveMatchPagePro = () => {
   const teams       = useMatchStore((s) => s.teams);
   const autoSwitch  = useMatchStore((s) => s.autoSwitchAttacker);
   const setAutoSwitch = useMatchStore((s) => s.setAutoSwitchAttacker);
+  const { plan, betaActive } = usePlan();
 
   const [mode, setMode] = useState<Mode>('full');
   const [attacker, setAttacker] = useState<Team>('home');
@@ -512,20 +513,41 @@ const LiveMatchPagePro = () => {
 
       {/* Mode + auto-switch */}
       <div className="flex gap-2">
-        <div className="rounded-lg border border-border bg-surface p-1 flex flex-1">
-          {(['full', 'quick', 'super_full'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={cn(
-                'flex-1 h-8 text-[11px] font-medium rounded-md transition-colors px-1',
-                mode === m ? 'bg-primary/20 text-primary' : 'text-muted-fg hover:text-fg',
-              )}
-            >
-              {m === 'full' ? t.live_mode_full : m === 'quick' ? t.live_mode_quick : 'Super completo'}
-            </button>
-          ))}
+        <div className="rounded-lg border border-border bg-surface p-1 flex flex-1 gap-0.5">
+          {(['full', 'quick', 'super_full'] as const).map((m) => {
+            const isSuper = m === 'super_full';
+            const superLocked = isSuper && !hasFormationAnalysis({ plan, betaActive });
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  if (superLocked) {
+                    window.location.href = '/app/plan';
+                    return;
+                  }
+                  setMode(m);
+                }}
+                className={cn(
+                  'flex-1 h-9 text-xs font-medium rounded-md transition-colors px-1 leading-tight relative',
+                  mode === m ? 'bg-primary/20 text-primary' : 'text-muted-fg hover:text-fg',
+                  superLocked && 'opacity-70',
+                )}
+              >
+                {m === 'full' ? t.live_mode_full : m === 'quick' ? t.live_mode_quick : (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="hidden sm:inline">Super completo</span>
+                    <span className="sm:hidden">Súper</span>
+                    {superLocked && (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-[#7C3AED]/20 text-[#7C3AED] uppercase leading-none">
+                        Pro +
+                      </span>
+                    )}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
       {mode === 'super_full' && liveLineup.field.length === 0 && (
