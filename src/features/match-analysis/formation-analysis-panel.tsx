@@ -4,6 +4,8 @@ import {
   perFormation,
   hasFormationData,
   getFormationTimelines,
+  compactifyStats,
+  TRANSITIONAL_KEY,
   type LineupMode,
   type FormationTimeline,
 } from '@/domain/formations';
@@ -30,11 +32,23 @@ export const FormationAnalysisPanel = ({
   myTeam: HandballTeam | null;
 }) => {
   const [mode, setMode] = useState<LineupMode>('field');
+  const [compactMode, setCompactMode] = useState<boolean>(true);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const has = useMemo(() => hasFormationData(events), [events]);
   const stats = useMemo(() => perFormation(events, mode), [events, mode]);
   const timelines = useMemo(() => getFormationTimelines(events, mode), [events, mode]);
+  // Modo compacto: agrupa las formaciones de 1 solo evento (típicamente "de paso"
+  // por cambios con el reloj corriendo) en una fila sintética "Cambios en curso".
+  // Preserva totales de forma exacta (suma de eventos idéntica a la vista completa).
+  const displayStats = useMemo(
+    () => (compactMode ? compactifyStats(stats) : stats),
+    [stats, compactMode],
+  );
+  const transitionalCount = useMemo(
+    () => stats.filter((s) => s.totalEvents <= 1).length,
+    [stats],
+  );
 
   const nameOf = (num: number) =>
     myTeam?.players.find((p) => p.number === num)?.name ?? `#${num}`;
@@ -64,21 +78,43 @@ export const FormationAnalysisPanel = ({
     <section className="rounded-lg border border-border bg-surface p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-xs font-medium text-fg">📊 Análisis por formación</h3>
-        <div className="flex rounded-md border border-border overflow-hidden text-[10px]">
-          <button
-            type="button"
-            onClick={() => { setMode('field'); setExpandedKey(null); }}
-            className={cn('px-2.5 py-1 transition-colors', mode === 'field' ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg')}
-          >
-            Solo campo (6)
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('fieldGk'); setExpandedKey(null); }}
-            className={cn('px-2.5 py-1 transition-colors border-l border-border', mode === 'fieldGk' ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg')}
-          >
-            Campo + arquero
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {transitionalCount >= 2 && (
+            <div className="flex rounded-md border border-border overflow-hidden text-[10px]">
+              <button
+                type="button"
+                onClick={() => { setCompactMode(true); setExpandedKey(null); }}
+                className={cn('px-2.5 py-1 transition-colors', compactMode ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg')}
+                title="Agrupa las formaciones con 1 solo evento (cambios en curso) en una sola fila. Los totales se preservan."
+              >
+                ⚡ Compacto
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCompactMode(false); setExpandedKey(null); }}
+                className={cn('px-2.5 py-1 transition-colors border-l border-border', !compactMode ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg')}
+                title="Muestra todas las formaciones, incluidas las de un solo evento."
+              >
+                Todo
+              </button>
+            </div>
+          )}
+          <div className="flex rounded-md border border-border overflow-hidden text-[10px]">
+            <button
+              type="button"
+              onClick={() => { setMode('field'); setExpandedKey(null); }}
+              className={cn('px-2.5 py-1 transition-colors', mode === 'field' ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg')}
+            >
+              Solo campo (6)
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('fieldGk'); setExpandedKey(null); }}
+              className={cn('px-2.5 py-1 transition-colors border-l border-border', mode === 'fieldGk' ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg')}
+            >
+              Campo + arquero
+            </button>
+          </div>
         </div>
       </div>
 
@@ -111,8 +147,9 @@ export const FormationAnalysisPanel = ({
             </tr>
           </thead>
           <tbody>
-            {stats.map((s) => {
-              const isExpanded = expandedKey === s.key;
+            {displayStats.map((s) => {
+              const isTransitional = s.key === TRANSITIONAL_KEY;
+              const isExpanded = !isTransitional && expandedKey === s.key;
               const timeline = timelines.get(s.key);
               const colSpan = 14 + (mode === 'fieldGk' ? 1 : 0);
 
@@ -121,31 +158,46 @@ export const FormationAnalysisPanel = ({
                   <tr
                     key={s.key}
                     className={cn(
-                      'border-b border-border/50 last:border-b-0 cursor-pointer transition-colors',
-                      isExpanded ? 'bg-primary/5' : 'hover:bg-surface-2',
+                      'border-b border-border/50 last:border-b-0 transition-colors',
+                      isTransitional
+                        ? 'bg-muted-fg/5 text-muted-fg'
+                        : cn('cursor-pointer', isExpanded ? 'bg-primary/5' : 'hover:bg-surface-2'),
                     )}
-                    onClick={() => toggle(s.key)}
+                    onClick={() => !isTransitional && toggle(s.key)}
                   >
                     <td className="py-1.5 pr-2 sticky left-0 bg-surface">
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn('text-muted-fg text-[10px] transition-transform', isExpanded && 'rotate-90')}>▶</span>
-                        <div className="flex flex-wrap gap-1">
-                          {s.field.map((num) => (
-                            <span
-                              key={num}
-                              className="inline-flex items-center gap-0.5 rounded bg-surface-2 px-1 py-0.5 text-[10px]"
-                              title={nameOf(num)}
-                            >
-                              <span className="font-semibold text-success">{num}</span>
-                              <span className="text-muted-fg truncate max-w-[60px]">{nameOf(num)}</span>
-                            </span>
-                          ))}
+                      {isTransitional ? (
+                        <div
+                          className="flex items-center gap-1.5"
+                          title={`Agrupa ${transitionalCount} formaciones con 1 solo evento cada una (típicamente cambios de jugadores con el reloj activo). Los totales se preservan.`}
+                        >
+                          <span className="text-[10px] opacity-50">·</span>
+                          <span className="inline-flex items-center gap-1 rounded bg-muted-fg/10 px-1.5 py-0.5 text-[10px] italic">
+                            ⚡ Cambios en curso
+                            <span className="text-[9px] opacity-70">({transitionalCount} form.)</span>
+                          </span>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn('text-muted-fg text-[10px] transition-transform', isExpanded && 'rotate-90')}>▶</span>
+                          <div className="flex flex-wrap gap-1">
+                            {s.field.map((num) => (
+                              <span
+                                key={num}
+                                className="inline-flex items-center gap-0.5 rounded bg-surface-2 px-1 py-0.5 text-[10px]"
+                                title={nameOf(num)}
+                              >
+                                <span className="font-semibold text-success">{num}</span>
+                                <span className="text-muted-fg truncate max-w-[60px]">{nameOf(num)}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </td>
                     {mode === 'fieldGk' && (
                       <td className="text-center px-1 text-info font-semibold">
-                        {s.goalkeeper == null ? '⊘' : s.goalkeeper}
+                        {isTransitional ? '—' : (s.goalkeeper == null ? '⊘' : s.goalkeeper)}
                       </td>
                     )}
                     {/* Ataque */}
