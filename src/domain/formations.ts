@@ -168,6 +168,64 @@ export const hasFormationData = (events: HandballEvent[]): boolean =>
   events.some((e) => e.team === 'home' && e.lineup && e.lineup.field.length > 0);
 
 // ═══════════════════════════════════════════════════════════════════
+//   COMPACTACIÓN — agrupa formaciones "de paso" preservando totales
+// ═══════════════════════════════════════════════════════════════════
+
+/** Clave de la fila sintética "Cambios en curso". */
+export const TRANSITIONAL_KEY = '__transitional__';
+
+/**
+ * Toma una lista de formaciones y agrupa las de 1 solo evento (típicamente
+ * cambios de jugadores con el reloj corriendo) en una fila sintética al final.
+ *
+ * Garantía crítica: **los totales se preservan**. La suma de GF, Err, Ataj,
+ * Palo, Tiros, GC, AtajGK, ErrR, PaloR, TirosR y totalEvents sobre toda la
+ * lista devuelta es idéntica a la suma sobre la lista original.
+ *
+ * Si hay 0 o 1 formaciones "de paso" no crea la fila (no vale la pena).
+ */
+export const compactifyStats = (stats: FormationStat[]): FormationStat[] => {
+  const regular: FormationStat[] = [];
+  const transitional: FormationStat[] = [];
+  for (const s of stats) {
+    if (s.totalEvents <= 1) transitional.push(s);
+    else regular.push(s);
+  }
+  if (transitional.length < 2) return stats;
+
+  const sum = (pick: (s: FormationStat) => number) =>
+    transitional.reduce((acc, s) => acc + pick(s), 0);
+
+  const goalsFor = sum((s) => s.goalsFor);
+  const goalsAgainst = sum((s) => s.goalsAgainst);
+  const shots = sum((s) => s.shots);
+  const opponentShots = sum((s) => s.opponentShots);
+
+  const aggregate: FormationStat = {
+    key: TRANSITIONAL_KEY,
+    field: [],
+    goalkeeper: null,
+    goalsFor,
+    missedShots: sum((s) => s.missedShots),
+    savedShots: sum((s) => s.savedShots),
+    postedShots: sum((s) => s.postedShots),
+    shots,
+    turnovers: sum((s) => s.turnovers),
+    goalsAgainst,
+    saves: sum((s) => s.saves),
+    opponentMisses: sum((s) => s.opponentMisses),
+    opponentPosts: sum((s) => s.opponentPosts),
+    opponentShots,
+    goalDiff: goalsFor - goalsAgainst,
+    totalEvents: sum((s) => s.totalEvents),
+    attackEfficiency: shots > 0 ? goalsFor / shots : null,
+    defenseEfficiency: opponentShots > 0 ? 1 - goalsAgainst / opponentShots : null,
+  };
+
+  return [...regular, aggregate];
+};
+
+// ═══════════════════════════════════════════════════════════════════
 //   TIMELINE POR FORMACIÓN (para el detalle expandible)
 // ═══════════════════════════════════════════════════════════════════
 
