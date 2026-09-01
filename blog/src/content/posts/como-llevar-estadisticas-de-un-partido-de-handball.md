@@ -1,7 +1,7 @@
 ---
 title: "Cómo llevar las estadísticas de un partido de handball (guía para entrenadores)"
 description: "Cómo llevar estadísticas de handball paso a paso: qué eventos registrar, cómo anotarlos en vivo sin perderte el partido y cómo convertir la planilla en decisiones."
-pubDate: 2026-09-01
+pubDate: 2026-09-01T12:00:00-03:00
 author: "Equipo StatzPro"
 tags: ["estadísticas", "planilla", "análisis"]
 keyword: "cómo llevar estadísticas de handball"
@@ -21,10 +21,10 @@ Llevar la planilla de un partido de balonmano no es anotar números por anotar: 
 
 El error más común es querer anotar todo. Terminás mirando la planilla en vez del partido. Registrá **lo que cambia una decisión**:
 
-- **Tiro** — el evento central. Cada tiro lleva tres datos: **resultado** (gol, atajada, error/afuera, palo), **zona de la cancha** desde donde salió (extremo, lateral, central, 6 metros, 9 metros) y **jugador**.
-- **Cuadrante del arco** — a qué parte del arco fue el tiro (arriba/abajo, izquierda/centro/derecha). Es lo que te arma el mapa del arquero.
-- **7 metros** — quién los tira, quién los ataja, a qué lado.
-- **Pérdida** — con un motivo grueso: pase, recepción, pasos, ataque, invasión de área.
+- **Tiro** — el evento central. Cada tiro lleva tres datos: **resultado** (gol, atajada, afuera, bloqueado), **zona** desde donde salió —nombrala por puesto: extremo izq./der., lateral izq./der., central, pivote (6 m)— y **jugador**. El tiro al palo que sale cuenta como "afuera"; si querés, marcá "al palo" aparte como dato secundario.
+- **Cuadrante del arco** — a qué parte del arco fue el tiro. Lo ideal es una grilla de 3×3 (alto / medio / bajo × izquierda / centro / derecha); la versión mínima es 2×3. Es lo que te arma el mapa del arquero.
+- **7 metros** — quién los tira, quién los ataja, a qué lado. Van aparte, no dentro de las zonas de tiro.
+- **Pérdida** — con un motivo grueso: pase, recepción, pasos o dobles, falta en ataque (carga), invasión de área, ataque pasivo, robo del rival en el uno contra uno.
 - **Exclusión (2 minutos)** — propia y del rival. Marca los tramos de superioridad e inferioridad numérica.
 
 Lo que **no** hace falta anotar en vivo: rebotes ofensivos, tipo de asistencia, qué sistema defensivo jugaba el rival en cada posesión. Eso se completa después con el video, si lo necesitás.
@@ -34,11 +34,11 @@ Lo que **no** hace falta anotar en vivo: rebotes ofensivos, tipo de asistencia, 
 La regla es **dos toques por evento, máximo**. Si tu planilla necesita que escribas una frase por tiro, no vas a poder seguir el juego.
 
 1. **Prepará la planilla antes.** Una grilla con las zonas de la cancha y otra con los cuadrantes del arco. Los nombres o dorsales de tus jugadores ya escritos.
-2. **Una marca por tiro.** Ponés el dorsal del jugador en la zona desde donde tiró y un símbolo para el resultado (por ejemplo: círculo = gol, X = atajada, guion = afuera, P = palo).
+2. **Una marca por tiro.** Ponés el dorsal del jugador en la zona desde donde tiró y un símbolo para el resultado (por ejemplo: círculo = gol, X = atajada, guion = afuera, B = bloqueado).
 3. **Delegá si podés.** Ideal: una persona registra ataque propio y otra registra el arquero y las exclusiones. Si estás solo, priorizá tiros y pérdidas; el resto se pierde y está bien.
 4. **Cerrá cada tiempo.** En el entretiempo, contá goles y tiros por jugador. Es el momento de detectar "estamos tirando todo de 9 metros" o "el central del rival ya nos hizo 4".
 
-> Si registrás en papel, vas a pasar el entretiempo y el post-partido sumando. Una app que lo hace en vivo te devuelve ese tiempo para mirar el partido.
+> Si registrás en papel, vas a pasar el entretiempo y el post-partido sumando. Una [app que lleva las estadísticas en vivo](https://statzpro.com) te devuelve ese tiempo para mirar el partido.
 
 ## De la planilla a los números que importan
 
@@ -46,11 +46,11 @@ Una vez que tenés los eventos, estas son las lecturas que sirven a un DT:
 
 ### Eficacia de tiro por zona
 
-Goles / tiros desde cada zona. Te dice **desde dónde conviene atacar** y desde dónde estás forzando. Si tu eficacia de 9 metros es baja y la de extremo es alta, el plan de juego tiene que buscar más el extremo.
+Goles / tiros desde cada zona. Te dice **desde dónde conviene atacar** y desde dónde estás forzando. Ojo: leé siempre la eficacia **junto con el volumen de tiros** y con cómo se generó la ocasión. Un 80% con 3 tiros de extremo no es una conclusión; y el tiro de primera línea, aunque tenga menos eficacia, es el que sostiene el juego posicional y te genera penales y exclusiones. Mirá también la eficacia con y sin los tiros bloqueados: si a un lateral le tapan muchos, el problema puede ser la lectura del bloqueo, no la puntería.
 
 ### Rendimiento del arquero
 
-Atajadas / tiros recibidos, **abierto por cuadrante del arco**. Casi todos los arqueros tienen un lado flojo. El del rival también: si sabés que ataja poco abajo a su izquierda, eso es información para tus tiradores.
+Atajadas / tiros recibidos, **abierto por cuadrante del arco**. El mapa por cuadrante necesita acumular varios partidos para ser confiable: en un solo partido un arquero recibe 40-55 tiros repartidos en 6-9 casillas, así que solo sirve para ajustes gruesos (mitad alta / mitad baja). Con 4-6 partidos ya podés hablar de un lado flojo —el de tu arquero y el del rival— y usarlo para elegir a dónde tirar.
 
 ### Pérdidas: cuántas y de qué tipo
 
@@ -62,12 +62,12 @@ Goles a favor y en contra durante los 2 minutos. Muchos partidos se definen ahí
 
 ### +/- por jugador
 
-Diferencia de gol mientras cada jugador estuvo en cancha. Es ruidoso en un partido, pero a lo largo de la temporada ordena bastante bien quién sostiene al equipo.
+Diferencia de gol mientras cada jugador estuvo en cancha. En un partido es puro ruido, y aun en la temporada está muy condicionado por el rol (un especialista de inferioridad arrastra saldo negativo), por el quinteto y por contra quién jugó cada tramo. Tomalo como contexto —cruzalo con minutos jugados y con qué compañeros— no como un ranking de quién es mejor.
 
 ## Errores típicos al llevar estadísticas de balonmano
 
 - **Anotar "tiro" sin zona.** Un tiro sin ubicación no te sirve para nada. La zona es la mitad del dato.
-- **Cambiar los criterios entre partidos.** Si un partido contás "palo" como tiro errado y al siguiente no, tu comparación de temporada queda rota. Definí las reglas una vez y respetalas.
+- **Cambiar los criterios entre partidos.** Si un partido contás el tiro bloqueado como lanzamiento y al siguiente no, tu comparación de temporada queda rota. Definí las reglas una vez y respetalas.
 - **Mirar solo el total del equipo.** El 55% de eficacia del equipo puede esconder un extremo al 80% y un lateral al 35%.
 - **No registrar al rival.** La mitad del valor del scouting está en tener los datos del próximo rival: quién tira, quién ata los 7 metros, dónde pierden.
 - **Guardar los datos y no volver a mirarlos.** La planilla que no se revisa el lunes no cambió nada.
