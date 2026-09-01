@@ -4,20 +4,20 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/cn';
 
-// ─── Configuración (cambiar acá si cambia el USD o el CBU) ────────────
-const USD_TO_ARS = 1430;
+// ─── Configuración (cambiar acá si cambia el USD o el alias) ──────────
+// Cotización USD→ARS para mostrar el equivalente en pesos.
+// Ref: dólar blue venta ≈ $1545 (1-sep-2026). Ajustar según cotización vigente.
+const USD_TO_ARS = 1545;
 
 const TRANSFER_INFO = {
-  cbu_alias: 'STATZPRO.MP', // ⚠️ TODO: reemplazar con tu alias/CBU real
-  cbu: '0000003100012345678901',
-  cuit: '20-12345678-3',
+  cbu_alias: 'arana.cai',
   titular: 'Mariano Nicolás Losada',
-  banco: 'Banco Galicia',
+  banco: 'Mercado Pago',
 };
 
 const WHATSAPP_NUMBER = '541126647764';
 
-export type CheckoutPlan = 'pro' | 'club';
+export type CheckoutPlan = 'pro' | 'pro_plus' | 'club';
 export type BillingCycle = 'monthly' | 'annual';
 
 interface CheckoutDialogProps {
@@ -28,8 +28,9 @@ interface CheckoutDialogProps {
 }
 
 const PLAN_INFO: Record<CheckoutPlan, { label: string; monthlyUsd: number; annualUsd: number }> = {
-  pro:  { label: 'Pro',  monthlyUsd: 5,  annualUsd: 45  },
-  club: { label: 'Club', monthlyUsd: 15, annualUsd: 144 },
+  pro:      { label: 'Pro',   monthlyUsd: 5,  annualUsd: 45  },
+  pro_plus: { label: 'Pro +', monthlyUsd: 8,  annualUsd: 75  },
+  club:     { label: 'Club',  monthlyUsd: 15, annualUsd: 144 },
 };
 
 export const CheckoutDialog = ({ open, onClose, plan, billingCycle }: CheckoutDialogProps) => {
@@ -218,8 +219,6 @@ export const CheckoutDialog = ({ open, onClose, plan, billingCycle }: CheckoutDi
 
           <div className="rounded-lg border border-border bg-surface-2/40 divide-y divide-border">
             <TransferRow label="Alias" value={TRANSFER_INFO.cbu_alias} onCopy={copyToClipboard} />
-            <TransferRow label="CBU" value={TRANSFER_INFO.cbu} onCopy={copyToClipboard} />
-            <TransferRow label="CUIT" value={TRANSFER_INFO.cuit} onCopy={copyToClipboard} />
             <TransferRow label="Titular" value={TRANSFER_INFO.titular} />
             <TransferRow label="Banco" value={TRANSFER_INFO.banco} />
           </div>
