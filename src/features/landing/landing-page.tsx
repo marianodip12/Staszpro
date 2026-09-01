@@ -245,10 +245,10 @@ export const LandingPage = () => {
           </div>
           <div className="flex items-center gap-4 text-muted-fg">
             <a
-              href="mailto:marianonicoslosada@gmail.com"
+              href="mailto:marianonicolaslosada@gmail.com"
               className="hover:text-fg transition-colors"
             >
-              {t.landing_footer_contact}: marianonicoslosada@gmail.com
+              {t.landing_footer_contact}: marianonicolaslosada@gmail.com
             </a>
           </div>
         </div>
