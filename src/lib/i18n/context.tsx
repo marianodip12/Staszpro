@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from 'react';
 import { DICTIONARIES, type Dict, type Locale } from './dict';
@@ -44,6 +45,11 @@ export const I18nProvider = ({ children }: { children: ReactNode }) => {
     setLocaleState(l);
     saveLocale(l);
   }, []);
+
+  // Mantener <html lang> en sync con el idioma activo (SEO / accesibilidad)
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   return (
     <I18nContext.Provider value={{ locale, t: DICTIONARIES[locale], setLocale }}>
