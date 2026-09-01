@@ -6,3 +6,4 @@ Disallow: /signup
 Disallow: /reset-password
 
 Sitemap: https://statzpro.com/sitemap.xml
+Sitemap: https://statzpro.com/blog/sitemap.xml

@@ -1,0 +1,112 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../consts';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.slug }, props: { post } }));
+}
+
+type Props = { post: CollectionEntry<'posts'> };
+const { post } = Astro.props;
+const { Content } = await post.render();
+const d = post.data;
+
+const url = `${SITE.url}${SITE.base}/${post.slug}`;
+const fmt = (x: Date) =>
+  x.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const jsonld: Record<string, unknown>[] = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: d.title,
+    description: d.description,
+    inLanguage: d.lang,
+    datePublished: d.pubDate.toISOString(),
+    dateModified: (d.updatedDate ?? d.pubDate).toISOString(),
+    author: { '@type': 'Organization', name: d.author },
+    publisher: {
+      '@type': 'Organization',
+      name: 'StatzPro',
+      logo: { '@type': 'ImageObject', url: `${SITE.url}/og-image.png` },
+    },
+    mainEntityOfPage: url,
+    ...(d.cover ? { image: `${SITE.url}${d.cover}` } : {}),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: `${SITE.url}${SITE.base}` },
+      { '@type': 'ListItem', position: 2, name: d.title, item: url },
+    ],
+  },
+];
+if (d.faq.length > 0) {
+  jsonld.push({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: d.faq.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  });
+}
+---
+
+<BaseLayout
+  title={d.title}
+  description={d.description}
+  path={`/${post.slug}`}
+  type="article"
+  image={d.cover ?? `${SITE.base}/og-default.png`}
+>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+
+  <p class="muted" style="font-size:14px;margin-bottom:8px">
+    <a href={SITE.base} style="color:var(--muted)">← Blog</a>
+  </p>
+
+  <article>
+    <h1>{d.title}</h1>
+    <p class="muted" style="margin-bottom:32px;font-size:15px">
+      Por {d.author} ·
+      <time datetime={d.pubDate.toISOString()}>{fmt(d.pubDate)}</time>
+      {d.updatedDate && <> · actualizado {fmt(d.updatedDate)}</>}
+    </p>
+
+    {
+      d.cover && (
+        <img src={d.cover} alt={d.coverAlt ?? d.title} style="margin-bottom:32px" loading="eager" />
+      )
+    }
+
+    <Content />
+
+    {
+      d.faq.length > 0 && (
+        <>
+          <h2>Preguntas frecuentes</h2>
+          {d.faq.map((f) => (
+            <>
+              <h3>{f.q}</h3>
+              <p>{f.a}</p>
+            </>
+          ))}
+        </>
+      )
+    }
+  </article>
+
+  <div class="cta">
+    <h3>Llevá estas métricas en tu equipo</h3>
+    <p>
+      StatzPro registra el partido en vivo desde el celular y te arma los mapas de calor, la eficacia
+      por jugador y la evolución de la temporada sin planillas de Excel.
+    </p>
+    <a class="btn" href="https://statzpro.com/signup">Probar StatzPro gratis →</a>
+  </div>
+</BaseLayout>
