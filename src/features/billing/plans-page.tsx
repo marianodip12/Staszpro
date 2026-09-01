@@ -3,7 +3,6 @@ import { usePlan, type Plan } from '@/lib/use-plan';
 import { useProfileType } from '@/lib/use-profile-type';
 import { cn } from '@/lib/cn';
 import { CheckoutDialog, type CheckoutPlan } from './checkout-dialog';
-import { betaDaysLeft } from '@/lib/use-plan';
 import { DonationDialog } from '@/components/donation-dialog';
 
 const WA_NUMBER = '541126647764';
@@ -51,17 +50,6 @@ export const PlansPage = () => {
             ? '10 partidos gratis para probar tus estadísticas personales. Pasate a Pro cuando quieras análisis ilimitado.'
             : '10 partidos gratis para probar la app. Pasate a Pro o Club cuando quieras más análisis.'}
         </p>
-        <div className="max-w-xl mx-auto rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-left">
-          <p className="text-sm font-semibold text-primary">🚀 Beta abierta: todo gratis hasta el 30 de agosto</p>
-          <p className="text-xs text-muted-fg mt-1 leading-relaxed">
-            Durante la beta todos los planes están desbloqueados y los pagos están desactivados.
-            Si la app te sirve y querés bancar el proyecto, podés{' '}
-            <button type="button" onClick={() => setDonateOpen(true)} className="text-primary underline underline-offset-2">
-              hacer una donación
-            </button>
-            {' '}— todo va al mantenimiento de servidores ({betaDaysLeft()} días de beta restantes).
-          </p>
-        </div>
         {currentPlan === 'free' && !loading && (
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-xs">
             <span className="text-yellow-400">⚠</span>
