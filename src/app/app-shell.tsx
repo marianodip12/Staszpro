@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NAV_ITEMS } from '@/domain/constants';
 import { useMatchStore } from '@/lib/store';
-import { useI18n, useT, LOCALE_LABELS, type Locale } from '@/lib/i18n';
+import { useI18n, useT, LOCALE_LABELS, LOCALES, type Locale } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth';
 import { usePlan } from '@/lib/use-plan';
 import { supabase } from '@/lib/supabase';
@@ -93,7 +93,7 @@ export const AppShell = () => {
 
   const liveLabel = status === 'live'
     ? t.live_banner
-    : locale === 'en' ? 'No match' : locale === 'pt' ? 'Sem jogo' : 'Sin partido';
+    : locale === 'en' ? 'No match' : locale === 'pt' ? 'Sem jogo' : locale === 'de' ? 'Kein Spiel' : 'Sin partido';
 
   return (
     <div className={cn('min-h-screen flex bg-bg text-fg', uiProMax && 'ui-pro-max')}>
@@ -406,8 +406,6 @@ export const AppShell = () => {
 };
 
 // ─── Language selector ───────────────────────────────────────────────
-
-const LOCALES: Locale[] = ['es', 'en', 'pt'];
 
 const LocaleSelector = ({
   locale, setLocale, compact = false,

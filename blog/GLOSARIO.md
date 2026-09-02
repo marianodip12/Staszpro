@@ -94,3 +94,34 @@ Referencia única de terminología para el blog y la app. Objetivo: consistencia
 | Eficacia ofensiva | Eficacia ofensiva / goles por posesión | Offensive efficiency (goals per possession) | Eficiência ofensiva | Goles ÷ posesiones; rendimiento global del ataque, ajustado al ritmo. |
 | +/- | +/- / saldo | Plus-minus | Saldo (mais/menos) | Diferencia de goles del equipo con ese jugador en cancha. Métrica ruidosa: leer con minutos y contexto de quinteto. |
 | Balance en superioridad / inferioridad | Parcial en superioridad / inferioridad | Power-play / short-handed goal differential | Saldo em superioridade / inferioridade | Goles a favor menos en contra durante los tramos de exclusión. |
+
+## Alemán (DE) — terminología de la app
+
+Registro informal, tratamiento **"du"** (app para entrenadores). Términos usados en la traducción `de` de `src/lib/i18n/dict.ts`. Se añade aquí como sección aparte porque las tablas de arriba ya tienen 5 columnas (ES-España / ES-LatAm / EN / PT-BR / definición) y sumar una sexta las vuelve ilegibles.
+
+| ES (LatAm) | EN | DE | Nota |
+|---|---|---|---|
+| Gol | Goal | **Tor** | |
+| Tiro / lanzamiento | Shot / throw | **Wurf** | |
+| Atajada | Save | **Parade** / gehaltener Ball | |
+| Arquero / portero | Goalkeeper | **Torwart** (tb. Torhüter) | |
+| Pérdida | Turnover | **Ballverlust** | |
+| Exclusión de 2 min | Two-minute suspension | **Zeitstrafe** | |
+| Penal / 7 metros | Seven-metre throw | **Siebenmeter** | |
+| Palo / poste | Post (woodwork) | **Pfosten** | |
+| Extremo (izq./der.) | Wing (left/right) | **Außen** — Linksaußen / Rechtsaußen | |
+| Lateral (izq./der.) | Back (left/right) | **Rückraum** — Rückraum links / rechts | |
+| Central / armador | Centre back (playmaker) | **Rückraummitte** / Spielmacher | |
+| Pivote | Pivot (line player) | **Kreisläufer** | |
+| Superioridad | Power play | **Überzahl** | |
+| Inferioridad | Short-handed | **Unterzahl** | |
+| Contraataque | Fast break | **Gegenstoß** / Tempogegenstoß | |
+| Eficacia de tiro | Shooting efficiency | **Wurfquote** | |
+| Mapa de calor | Heatmap | **Heatmap** / Wurfbild | |
+| Partido | Match | **Spiel** | |
+| Equipo | Team | **Mannschaft** | |
+| Temporada | Season | **Saison** | |
+| Entrenador | Coach | **Trainer** | |
+| Rival | Opponent | **Gegner** | |
+| Alineación | Line-up | **Aufstellung** | |
+| Tarjeta amarilla / azul / roja | Yellow / blue / red card | **Gelbe / Blaue / Rote Karte** | |

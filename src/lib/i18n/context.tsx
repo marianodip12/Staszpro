@@ -15,12 +15,13 @@ const STORAGE_KEY = 'hp_locale';
 const readLocale = (): Locale => {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === 'es' || v === 'en' || v === 'pt') return v;
+    if (v === 'es' || v === 'en' || v === 'pt' || v === 'de') return v;
   } catch { /* ignore */ }
   // Auto-detect from browser if no stored preference
   const lang = navigator.language?.slice(0, 2);
   if (lang === 'pt') return 'pt';
   if (lang === 'en') return 'en';
+  if (lang === 'de') return 'de';
   return 'es';
 };
 
