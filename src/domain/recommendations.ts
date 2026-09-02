@@ -6,19 +6,19 @@ import type { CourtZoneId, EventType, Player, Team } from './types';
  *
  * Reglas:
  *   - Extremos son fijos (sólo el extremo correspondiente).
- *   - Primera línea (laterales/centro): primero el específico, después armadores.
+ *   - Primera línea (laterales/centro): primero el específico, después centrales.
  *   - Pivote: zona 6m centro.
  *   - 7m / arco-a-arco: sin preferencia (cualquier jugador puede tirar).
  */
 export const POSITION_PRIORITY_BY_ZONE: Record<CourtZoneId, string[]> = {
   extreme_left:  ['Extremo Izq.'],
   extreme_right: ['Extremo Der.'],
-  lateral_left:  ['Lateral Izq.', 'Armador'],
-  lateral_right: ['Lateral Der.', 'Armador'],
-  center_above:  ['Armador', 'Lateral Izq.', 'Lateral Der.'],
-  near_left:     ['Lateral Izq.', 'Armador'],
+  lateral_left:  ['Lateral Izq.', 'Central'],
+  lateral_right: ['Lateral Der.', 'Central'],
+  center_above:  ['Central', 'Lateral Izq.', 'Lateral Der.'],
+  near_left:     ['Lateral Izq.', 'Central'],
   near_center:   ['Pivote'],
-  near_right:    ['Lateral Der.', 'Armador'],
+  near_right:    ['Lateral Der.', 'Central'],
   '7m':          [],
   long_range:    [],
 };

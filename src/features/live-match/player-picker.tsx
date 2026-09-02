@@ -146,7 +146,7 @@ export const PlayerPicker = ({
                 </span>
                 <span className="text-[8px] text-muted-fg">
                   {recommended[0]?.position}
-                  {recommended.length > 1 && recommended.some((p) => p.position !== recommended[0].position) && ' / armadores'}
+                  {recommended.length > 1 && recommended.some((p) => p.position !== recommended[0].position) && ' / centrales'}
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-1.5">

@@ -68,7 +68,7 @@ function buildDemoTeams(): HandballTeam[] {
         { id: 'p-1-2', name: 'Arq Suplente', number: 12, position: 'Arquero' },
         { id: 'p-1-3', name: 'Ext. Izq',    number: 5,  position: 'Extremo Izq.' },
         { id: 'p-1-4', name: 'Lat. Izq',    number: 7,  position: 'Lateral Izq.' },
-        { id: 'p-1-5', name: 'Armador',     number: 10, position: 'Armador' },
+        { id: 'p-1-5', name: 'Central',     number: 10, position: 'Central' },
         { id: 'p-1-6', name: 'Lat. Der',    number: 8,  position: 'Lateral Der.' },
         { id: 'p-1-7', name: 'Ext. Der',    number: 11, position: 'Extremo Der.' },
         { id: 'p-1-8', name: 'Pivote',      number: 9,  position: 'Pivote' },
@@ -95,7 +95,7 @@ function buildDemoMatch(): MatchSummary {
     { name: 'Arq Titular', number: 1 },
     { name: 'Ext. Izq', number: 5 },
     { name: 'Lat. Izq', number: 7 },
-    { name: 'Armador', number: 10 },
+    { name: 'Central', number: 10 },
     { name: 'Lat. Der', number: 8 },
     { name: 'Ext. Der', number: 11 },
     { name: 'Pivote', number: 9 },
@@ -155,7 +155,7 @@ function buildDemoMatch(): MatchSummary {
     ev(29, 'home', 'goal',  { zone: 'lateral_right', goalZone: 'tl', shooter: P[4], throwType: 'salto' }),
     ev(30, 'home', 'half_time'),
     // ── Segundo tiempo: el rival aprieta, Mi Equipo cae en eficacia y lo
-    //    sostiene el arquero + una racha final del armador ──
+    //    sostiene el arquero + una racha final del central ──
     ev(32, 'away', 'goal',  { zone: 'lateral_left',  goalZone: 'bl', shooter: R(11) }),
     ev(33, 'home', 'miss',  { zone: 'long_range',    goalZone: 'out', shooter: P[3] }),
     ev(35, 'away', 'goal',  { zone: 'near_left',     goalZone: 'bc', shooter: R(13) }),
