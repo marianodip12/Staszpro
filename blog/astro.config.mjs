@@ -5,6 +5,6 @@ import { defineConfig } from 'astro/config';
 export default defineConfig({
   site: 'https://statzpro.com',
   base: '/blog',
-  trailingSlash: 'ignore',
+  trailingSlash: 'never',
   build: { format: 'directory' },
 });
