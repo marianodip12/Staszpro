@@ -125,3 +125,63 @@ Registro informal, tratamiento **"du"** (app para entrenadores). Términos usado
 | Rival | Opponent | **Gegner** | |
 | Alineación | Line-up | **Aufstellung** | |
 | Tarjeta amarilla / azul / roja | Yellow / blue / red card | **Gelbe / Blaue / Rote Karte** | |
+
+## Francés (FR) — terminología de la app
+
+Registro informal, tratamiento **"tu"** (no "vous"; app para entrenadores). Términos usados en la traducción `fr` de `src/lib/i18n/dict.ts`.
+
+| ES (LatAm) | EN | FR | Nota |
+|---|---|---|---|
+| Gol | Goal | **but** | |
+| Tiro / lanzamiento | Shot / throw | **tir** | |
+| Atajada | Save | **arrêt** | |
+| Arquero / portero | Goalkeeper | **gardien** (de but) | |
+| Pérdida | Turnover | **perte de balle** | |
+| Exclusión de 2 min | Two-minute suspension | **exclusion de 2 minutes** | |
+| Penal / 7 metros | Seven-metre throw | **jet de 7 mètres** | |
+| Palo / poste | Post (woodwork) | **poteau** | |
+| Extremo (izq./der.) | Wing (left/right) | **ailier** (gauche / droit) | |
+| Lateral (izq./der.) | Back (left/right) | **arrière** (gauche / droit) | |
+| Central / armador | Centre back (playmaker) | **demi-centre** | |
+| Pivote | Pivot (line player) | **pivot** | |
+| Superioridad | Power play | **supériorité numérique** | |
+| Inferioridad | Short-handed | **infériorité numérique** | |
+| Contraataque | Fast break | **contre-attaque** / montée de balle | |
+| Eficacia de tiro | Shooting efficiency | **efficacité au tir** | |
+| Mapa de calor | Heatmap | **carte de chaleur** | |
+| Partido | Match | **match** | |
+| Equipo | Team | **équipe** | |
+| Temporada | Season | **saison** | |
+| Entrenador | Coach | **entraîneur** | |
+| Rival | Opponent | **adversaire** | |
+| Tarjeta amarilla / roja | Yellow / red card | **carton jaune / rouge** | |
+
+## Italiano (IT) — terminología de la app
+
+Registro informal, tratamiento **"tu"** (app para entrenadores). Términos usados en la traducción `it` de `src/lib/i18n/dict.ts`.
+
+| ES (LatAm) | EN | IT | Nota |
+|---|---|---|---|
+| Gol | Goal | **gol** / rete | |
+| Tiro / lanzamiento | Shot / throw | **tiro** | |
+| Atajada | Save | **parata** | |
+| Arquero / portero | Goalkeeper | **portiere** | |
+| Pérdida | Turnover | **palla persa** | |
+| Exclusión de 2 min | Two-minute suspension | **esclusione di 2 minuti** | |
+| Penal / 7 metros | Seven-metre throw | **tiro da 7 metri** | |
+| Palo / poste | Post (woodwork) | **palo** | |
+| Extremo (izq./der.) | Wing (left/right) | **ala** (sinistra / destra) | |
+| Lateral (izq./der.) | Back (left/right) | **terzino** (sinistro / destro) | |
+| Central / armador | Centre back (playmaker) | **centrale** / regista | |
+| Pivote | Pivot (line player) | **pivot** | |
+| Superioridad | Power play | **superiorità numerica** | |
+| Inferioridad | Short-handed | **inferiorità numerica** | |
+| Contraataque | Fast break | **contropiede** | |
+| Eficacia de tiro | Shooting efficiency | **efficacia al tiro** | |
+| Mapa de calor | Heatmap | **mappa di calore** | |
+| Partido | Match | **partita** | |
+| Equipo | Team | **squadra** | |
+| Temporada | Season | **stagione** | |
+| Entrenador | Coach | **allenatore** | |
+| Rival | Opponent | **avversario** | |
+| Tarjeta amarilla / roja | Yellow / red card | **cartellino giallo / rosso** | |
