@@ -5,7 +5,6 @@ import { Dialog, DialogFooter } from '@/components/ui/dialog';
 import { Input, Label } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { adjustClock, clockToMinute, setClockSeconds, tickClock, type ClockState, type Half } from '@/domain/live';
-import { cn } from '@/lib/cn';
 
 export interface ScoreboardProps {
   home: string;
@@ -42,9 +41,7 @@ export const Scoreboard = ({ home, away, homeColor, awayColor, homeScore, awaySc
   const adjust = (delta: number) => onClockChange(adjustClock(clock, delta));
 
   // Mostramos el botón "Pasar al 2do tiempo" cuando estamos en 1T y pasamos del
-  // minuto 25 — así el usuario lo tiene a la vista en la recta final del 1T
-  // y al llegar al descanso. El bug original era que el cambio de tiempo estaba
-  // enterrado dentro del dialog de "Ajustar".
+  // minuto 25 — así el usuario lo tiene a la vista en la recta final del 1T.
   const showStartSecondHalf = clock.half === 1 && clock.seconds >= 25 * 60;
 
   const startSecondHalf = () => {
@@ -53,36 +50,54 @@ export const Scoreboard = ({ home, away, homeColor, awayColor, homeScore, awaySc
 
   return (
     <>
-      <div className="rounded-lg border border-border bg-surface p-3">
-        {/* Scores row: [home score] [centered clock+half] [away score] */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <TeamSide name={home} score={homeScore} color={homeColor} align="left" />
-
-          <div className="flex flex-col items-center min-w-[104px]">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse-live" />
-              <span className="text-[9px] font-semibold uppercase tracking-widest text-danger">
-                En vivo
-              </span>
+      {/* ── Franja compacta STICKY: score + reloj siempre a la vista mientras
+             se cargan eventos (aunque scrollees hasta la cancha/arco). ─────── */}
+      <div className="sticky top-0 z-30 rounded-lg border border-border bg-surface/95 backdrop-blur px-3 py-2 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: homeColor }} />
+              <span className="text-[11px] font-medium text-fg truncate">{home}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="font-mono text-2xl font-semibold tabular text-fg leading-none mt-1 hover:text-primary transition-colors"
-              title="Tocá para ajustar el tiempo"
-            >
-              {mm}:{ss}
-            </button>
-            <div className="mt-1.5 px-2 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-[10px] font-medium text-primary">
-              {clock.half === 1 ? '1er tiempo' : '2do tiempo'} · {minute}'
+            <div className="font-mono text-lg font-bold tabular text-fg whitespace-nowrap">
+              {homeScore}
+              <span className="text-muted-fg font-normal mx-1">–</span>
+              {awayScore}
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0 justify-end">
+              <span className="text-[11px] font-medium text-fg truncate">{away}</span>
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: awayColor }} />
             </div>
           </div>
 
-          <TeamSide name={away} score={awayScore} color={awayColor} align="right" />
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            title="Tocá para ajustar el tiempo"
+            className="flex items-center gap-1 flex-shrink-0 border-l border-border pl-2.5 font-mono text-sm font-semibold tabular text-fg hover:text-primary transition-colors"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse-live" />
+            {mm}:{ss}
+            <span className="font-sans text-[9px] px-1 py-px rounded bg-primary/15 text-primary">
+              {clock.half === 1 ? '1T' : '2T'}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Controles del reloj (flujo normal, debajo de la franja) ────────── */}
+      <div className="rounded-lg border border-border bg-surface p-3">
+        <div className="flex items-baseline justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-fg">
+            {clock.half === 1 ? '1er tiempo' : '2do tiempo'} · {minute}'
+          </span>
+          <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-widest text-danger">
+            <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse-live" />
+            En vivo
+          </span>
         </div>
 
-        {/* Clock controls */}
-        <div className="flex gap-1.5 mt-3">
+        <div className="flex gap-1.5">
           <Button
             size="sm"
             variant={clock.running ? 'secondary' : 'primary'}
@@ -103,7 +118,6 @@ export const Scoreboard = ({ home, away, homeColor, awayColor, homeScore, awaySc
           </Button>
         </div>
 
-        {/* Botón para pasar al 2do tiempo — visible desde el minuto 25 del 1T */}
         {showStartSecondHalf && (
           <Button
             size="sm"
@@ -125,38 +139,6 @@ export const Scoreboard = ({ home, away, homeColor, awayColor, homeScore, awaySc
     </>
   );
 };
-
-const TeamSide = ({
-  name,
-  score,
-  color,
-  align,
-}: {
-  name: string;
-  score: number;
-  color: string;
-  align: 'left' | 'right';
-}) => (
-  <div className={cn('min-w-0', align === 'right' ? 'text-right' : 'text-left')}>
-    <div
-      className={cn(
-        'flex items-center gap-1.5 text-xs font-medium text-fg truncate',
-        align === 'right' && 'justify-end',
-      )}
-    >
-      {align === 'left' && (
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      )}
-      <span className="truncate">{name}</span>
-      {align === 'right' && (
-        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-      )}
-    </div>
-    <div className="font-mono text-4xl font-semibold tabular leading-none mt-1">
-      {score}
-    </div>
-  </div>
-);
 
 // ─── Edit-clock dialog ─────────────────────────────────────────────────
 
