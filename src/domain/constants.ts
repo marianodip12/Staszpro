@@ -76,7 +76,7 @@ export type Competition = (typeof COMPETITIONS)[number];
 
 export const POSITIONS = [
   'Arquero',
-  'Armador',
+  'Central',
   'Lateral Izq.',
   'Lateral Der.',
   'Extremo Izq.',

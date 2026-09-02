@@ -27,7 +27,7 @@ interface QuickLog {
 interface DemoPlayer { number: number; name: string; position: string }
 
 const DEMO_PLAYERS: DemoPlayer[] = [
-  { number: 7,  name: 'D. Simonet',   position: 'Armador' },
+  { number: 7,  name: 'D. Simonet',   position: 'Central' },
   { number: 8,  name: 'P. Vainstein', position: 'Lat. Izq.' },
   { number: 11, name: 'D. Bonanno',   position: 'Ext. Izq.' },
   { number: 14, name: 'P. Portela',   position: 'Ext. Der.' },

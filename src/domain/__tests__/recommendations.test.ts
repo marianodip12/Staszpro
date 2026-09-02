@@ -16,8 +16,8 @@ const mkPlayer = (id: string, name: string, number: number, position: string): P
 describe('recommendedPlayersForZone', () => {
   const roster: Player[] = [
     mkPlayer('1', 'Arquero',     1,  'Arquero'),
-    mkPlayer('2', 'Armador1',    7,  'Armador'),
-    mkPlayer('3', 'Armador2',    11, 'Armador'),
+    mkPlayer('2', 'Central1',    7,  'Central'),
+    mkPlayer('3', 'Central2',    11, 'Central'),
     mkPlayer('4', 'LatIzq1',     5,  'Lateral Izq.'),
     mkPlayer('5', 'LatIzq2',     12, 'Lateral Izq.'),
     mkPlayer('6', 'LatDer',      8,  'Lateral Der.'),
@@ -43,15 +43,15 @@ describe('recommendedPlayersForZone', () => {
     expect(recommended.map((p) => p.id)).toEqual(['8']);
   });
 
-  it('lateral_left → first laterals (sorted by number), then armadores (sorted by number)', () => {
+  it('lateral_left → first laterals (sorted by number), then centrales (sorted by number)', () => {
     const { recommended } = recommendedPlayersForZone(roster, 'lateral_left');
-    // LI #5 (id 4), LI #12 (id 5), then Armador #7 (id 2), Armador #11 (id 3)
+    // LI #5 (id 4), LI #12 (id 5), then Central #7 (id 2), Central #11 (id 3)
     expect(recommended.map((p) => p.id)).toEqual(['4', '5', '2', '3']);
   });
 
-  it('center_above → armadores first, then laterals', () => {
+  it('center_above → centrales first, then laterals', () => {
     const { recommended } = recommendedPlayersForZone(roster, 'center_above');
-    // Armador #7, Armador #11, LI #5, LI #12, LD #8
+    // Central #7, Central #11, LI #5, LI #12, LD #8
     expect(recommended.map((p) => p.id)).toEqual(['2', '3', '4', '5', '6']);
   });
 
