@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run build:blog",
+    "build:blog": "cd blog && npm install --no-audit --no-fund && npm run build && node -e \"const fs=require('fs');fs.rmSync('../dist/blog',{recursive:true,force:true});fs.cpSync('dist','../dist/blog',{recursive:true})\"",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

@@ -1,0 +1,48 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../consts';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft && data.lang === 'es')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+
+<BaseLayout title={SITE.title} description={SITE.description} path="/" type="website">
+  <h1>Blog de StatzPro</h1>
+  <p class="muted" style="font-size:19px;max-width:620px">
+    Guías de análisis y estadísticas de handball (balonmano) para entrenadores: cómo llevar la
+    planilla, qué métricas miran los cuerpos técnicos y cómo leer los datos de tu equipo.
+  </p>
+
+  {posts.length === 0 && <p class="muted">Todavía no hay artículos publicados.</p>}
+
+  <ul style="list-style:none;padding:0;margin:40px 0 0">
+    {
+      posts.map((post) => (
+        <li style="padding:24px 0;border-top:1px solid var(--line)">
+          <a href={`${SITE.base}/${post.slug}`} style="color:#fff">
+            <h2 style="margin:0 0 6px;font-size:24px">{post.data.title}</h2>
+          </a>
+          <p class="muted" style="margin:0 0 8px">{post.data.description}</p>
+          <p class="muted" style="margin:0;font-size:14px">
+            <time datetime={post.data.pubDate.toISOString()}>{fmt(post.data.pubDate)}</time>
+            {post.data.tags.length > 0 && <> · {post.data.tags.join(' · ')}</>}
+          </p>
+        </li>
+      ))
+    }
+  </ul>
+
+  <div class="cta">
+    <h3>Analizá tus propios partidos</h3>
+    <p>
+      StatzPro registra tiros, atajadas y exclusiones en vivo y te arma mapas de calor, eficacia por
+      jugador y evolución de la temporada. Gratis para empezar.
+    </p>
+    <a class="btn" href="https://statzpro.com/signup">Empezar gratis →</a>
+  </div>
+</BaseLayout>
