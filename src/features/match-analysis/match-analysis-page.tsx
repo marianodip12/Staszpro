@@ -37,6 +37,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { PlayersPanel } from './players-panel';
 import { TurnoverReasonBreakdown } from './turnover-reason-breakdown';
+import { MinutesPlayedPanel } from './minutes-played-panel';
 import { CompareBar } from '@/features/live-match/live-stats';
 import { EventTimeline } from '@/features/live-match/event-timeline';
 import { EventEditDialog } from '@/features/live-match/event-edit-dialog';
@@ -468,6 +469,13 @@ export const MatchAnalysisPage = ({ externalMatch, readonly: readonlyProp = fals
       >
         <FormationAnalysisPanel events={allEvents} myTeam={myTeam} />
       </ProSectionLock>
+
+      {/* ⏱️ Minutos jugados (solo Super Completo — se auto-oculta si no hay datos) */}
+      <MinutesPlayedPanel
+        events={allEvents}
+        homeTeam={myTeam && myTeam.name === match.home ? myTeam : null}
+        homeColor={match.homeColor}
+      />
 
       {/* Pérdidas — court view */}
       <section>

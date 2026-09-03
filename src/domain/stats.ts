@@ -309,6 +309,50 @@ export const buildTurnoverBreakdown = (events: HandballEvent[]): TurnoverBreakdo
   };
 };
 
+// ─── Minutos jugados por jugador (Modo Super Completo) ────────────────
+// Solo para el equipo local ('home'): en Super Completo cada evento de
+// 'home' guarda un snapshot de la formación en cancha (lineup). Entre dos
+// snapshots consecutivos, los jugadores del snapshot anterior estuvieron
+// en cancha ese intervalo de minutos. El tiempo previo al primer snapshot
+// no se cuenta (no sabemos quién estaba). Si no hay snapshots → [] (el
+// partido no se cargó en Super Completo) y la UI oculta la sección.
+export interface MinutesRow {
+  number: number;
+  minutes: number;
+}
+
+export const buildMinutesPlayed = (
+  events: HandballEvent[],
+  endMinute?: number,
+): MinutesRow[] => {
+  const withLineup = events
+    .filter(
+      (e) =>
+        e.team === 'home' &&
+        e.lineup != null &&
+        (e.lineup.field.length > 0 || e.lineup.goalkeeper != null),
+    )
+    .sort((a, b) => a.min - b.min);
+  if (withLineup.length === 0) return [];
+
+  const lastMin = endMinute ?? events.reduce((m, e) => Math.max(m, e.min), 0);
+  const acc: Record<number, number> = {};
+
+  for (let i = 0; i < withLineup.length; i++) {
+    const cur = withLineup[i];
+    const nextMin = i + 1 < withLineup.length ? withLineup[i + 1].min : lastMin;
+    const delta = Math.max(0, nextMin - cur.min);
+    if (delta === 0) continue;
+    const nums = new Set<number>(cur.lineup!.field);
+    if (cur.lineup!.goalkeeper != null) nums.add(cur.lineup!.goalkeeper);
+    for (const n of nums) acc[n] = (acc[n] ?? 0) + delta;
+  }
+
+  return Object.entries(acc)
+    .map(([number, minutes]) => ({ number: Number(number), minutes }))
+    .sort((a, b) => b.minutes - a.minutes || a.number - b.number);
+};
+
 // ─── Season stats (across completed matches) ────────────────────────────
 export interface SeasonStats {
   w: number;                 // wins
