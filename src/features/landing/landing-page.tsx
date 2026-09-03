@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useI18n, useT, LOCALE_LABELS, LOCALES, type Locale } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
+import { useLocalizedHead } from '@/lib/i18n/use-localized-head';
+import { LocaleMenu } from '@/components/locale-menu';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/cn';
 import { trackVisit } from '@/lib/visits';
@@ -13,8 +15,8 @@ export const LandingPage = () => {
   useEffect(() => { void trackVisit('landing'); }, []);
 
   const t = useT();
-  const { locale, setLocale } = useI18n();
   const { isAuthenticated } = useAuth();
+  useLocalizedHead();
 
   return (
     <div className="min-h-screen bg-bg text-fg flex flex-col">
@@ -41,7 +43,7 @@ export const LandingPage = () => {
             </a>
           </nav>
 
-          <LandingLocaleSwitcher locale={locale} setLocale={setLocale} />
+          <LocaleMenu className="hidden sm:block" />
 
           {isAuthenticated ? (
             <Link
@@ -278,27 +280,3 @@ const PlayerStatPreview = ({
   </div>
 );
 
-const LandingLocaleSwitcher = ({
-  locale,
-  setLocale,
-}: {
-  locale: Locale;
-  setLocale: (l: Locale) => void;
-}) => (
-  <div className="hidden sm:flex gap-0.5 rounded-md border border-border bg-surface p-0.5 mr-1">
-    {LOCALES.map((l) => (
-      <button
-        key={l}
-        type="button"
-        onClick={() => setLocale(l)}
-        className={cn(
-          'text-[10px] font-semibold py-1 px-2 rounded transition-colors',
-          l === locale ? 'bg-primary/15 text-primary' : 'text-muted-fg hover:text-fg',
-        )}
-        title={LOCALE_LABELS[l]}
-      >
-        {l.toUpperCase()}
-      </button>
-    ))}
-  </div>
-);

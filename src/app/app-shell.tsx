@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NAV_ITEMS } from '@/domain/constants';
 import { useMatchStore } from '@/lib/store';
-import { useI18n, useT, LOCALE_LABELS, LOCALES, type Locale } from '@/lib/i18n';
+import { useI18n, useT } from '@/lib/i18n';
+import { LocaleMenu } from '@/components/locale-menu';
 import { useAuth } from '@/lib/auth';
 import { usePlan } from '@/lib/use-plan';
 import { supabase } from '@/lib/supabase';
@@ -26,7 +27,7 @@ export const AppShell = () => {
   const status = useMatchStore((s) => s.status);
   const uiProMax = useMatchStore((s) => s.uiProMax);
   const t = useT();
-  const { locale, setLocale } = useI18n();
+  const { locale } = useI18n();
   const { user, signOut } = useAuth();
   const { plan } = usePlan();
   const { isPlayer } = useProfileType();
@@ -267,7 +268,7 @@ export const AppShell = () => {
 
         {/* Sidebar footer: language + status + account */}
         <div className="border-t border-border p-3 space-y-3">
-          <LocaleSelector locale={locale} setLocale={setLocale} />
+          <LocaleMenu align="left" />
           <div className={cn(
             'flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-semibold uppercase tracking-wider',
             status === 'live'
@@ -316,7 +317,7 @@ export const AppShell = () => {
             <span className="text-[9px] px-1.5 py-[1px] rounded bg-primary/15 border border-primary/30 text-primary font-semibold tracking-wider">v11</span>
           </div>
           <div className="flex items-center gap-2">
-            <LocaleSelector locale={locale} setLocale={setLocale} compact />
+            <LocaleMenu compact />
             <div className={cn(
               'flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold uppercase tracking-wider',
               status === 'live'
@@ -401,43 +402,6 @@ export const AppShell = () => {
 
       {/* Floating support button */}
       <SupportButton />
-    </div>
-  );
-};
-
-// ─── Language selector ───────────────────────────────────────────────
-
-const LocaleSelector = ({
-  locale, setLocale, compact = false,
-}: { locale: Locale; setLocale: (l: Locale) => void; compact?: boolean }) => {
-  if (compact) {
-    const next = LOCALES[(LOCALES.indexOf(locale) + 1) % LOCALES.length];
-    return (
-      <button
-        type="button"
-        onClick={() => setLocale(next)}
-        title="Change language"
-        className="text-[11px] font-semibold px-2 py-1 rounded border border-border bg-surface-2/60 text-muted-fg hover:text-fg transition-colors whitespace-nowrap"
-      >
-        {LOCALE_LABELS[locale]}
-      </button>
-    );
-  }
-  return (
-    <div className="flex gap-1 rounded-md border border-border bg-surface-2/40 p-1">
-      {LOCALES.map((l) => (
-        <button
-          key={l}
-          type="button"
-          onClick={() => setLocale(l)}
-          className={cn(
-            'flex-1 text-[10px] font-semibold py-1 rounded transition-colors',
-            l === locale ? 'bg-primary/20 text-primary border border-primary/40' : 'text-muted-fg hover:text-fg',
-          )}
-        >
-          {LOCALE_LABELS[l]}
-        </button>
-      ))}
     </div>
   );
 };
