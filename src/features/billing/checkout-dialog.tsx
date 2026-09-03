@@ -145,7 +145,7 @@ export const CheckoutDialog = ({ open, onClose, plan, billingCycle }: CheckoutDi
           <span className="text-xs text-muted-fg">USD</span>
         </div>
         <div className="text-xs text-muted-fg mt-0.5">
-          ≈ ${ars.toLocaleString('es-AR')} ARS · Cotización: $1 USD = $1.430 ARS
+          ≈ ${ars.toLocaleString('es-AR')} ARS
         </div>
       </div>
 
