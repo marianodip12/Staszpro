@@ -1,4 +1,4 @@
-import { GOAL_QUADRANT_ORDER } from './constants';
+import { GOAL_QUADRANT_ORDER, TURNOVER_REASON_ORDER } from './constants';
 import { isShotEvent } from './types';
 import type {
   CourtZoneId,
@@ -6,6 +6,7 @@ import type {
   HandballEvent,
   MatchSummary,
   Team,
+  TurnoverReason,
 } from './types';
 
 // ─── Match stats (aggregates per-team) ──────────────────────────────────
@@ -248,6 +249,63 @@ export const buildScorers = (events: HandballEvent[]): ScorerStat[] => {
     m[key].goals++;
   }
   return Object.values(m).sort((a, b) => b.goals - a.goals);
+};
+
+// ─── Pérdidas por motivo ──────────────────────────────────────────────
+export type TurnoverReasonKey = TurnoverReason | 'unknown';
+
+const EMPTY_REASONS = (): Record<TurnoverReasonKey, number> => ({
+  steal: 0, bad_pass: 0, bad_reception: 0, steps: 0, offensive_foul: 0, unknown: 0,
+});
+
+export interface TurnoverPlayerRow {
+  name: string;
+  number: number;
+  total: number;
+  byReason: Record<TurnoverReasonKey, number>;
+}
+
+export interface TurnoverBreakdown {
+  home: Record<TurnoverReasonKey, number>;
+  away: Record<TurnoverReasonKey, number>;
+  homeTotal: number;
+  awayTotal: number;
+  /** Pérdidas por jugador (ambos equipos si tienen shooter). Ordenado desc. */
+  byPlayer: TurnoverPlayerRow[];
+  /** Orden canónico de los motivos, para renderizar. */
+  order: readonly TurnoverReasonKey[];
+}
+
+export const buildTurnoverBreakdown = (events: HandballEvent[]): TurnoverBreakdown => {
+  const home = EMPTY_REASONS();
+  const away = EMPTY_REASONS();
+  const players: Record<string, TurnoverPlayerRow> = {};
+
+  for (const e of events) {
+    if (e.type !== 'turnover') continue;
+    const key: TurnoverReasonKey = e.turnoverReason ?? 'unknown';
+    (e.team === 'home' ? home : away)[key]++;
+
+    if (e.shooter) {
+      const pk = `${e.team}:${e.shooter.name}:${e.shooter.number}`;
+      if (!players[pk]) {
+        players[pk] = { name: e.shooter.name, number: e.shooter.number, total: 0, byReason: EMPTY_REASONS() };
+      }
+      players[pk].total++;
+      players[pk].byReason[key]++;
+    }
+  }
+
+  const sum = (r: Record<TurnoverReasonKey, number>) =>
+    Object.values(r).reduce((a, b) => a + b, 0);
+
+  return {
+    home, away,
+    homeTotal: sum(home),
+    awayTotal: sum(away),
+    byPlayer: Object.values(players).sort((a, b) => b.total - a.total),
+    order: [...TURNOVER_REASON_ORDER, 'unknown'],
+  };
 };
 
 // ─── Season stats (across completed matches) ────────────────────────────

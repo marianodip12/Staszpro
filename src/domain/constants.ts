@@ -4,6 +4,7 @@ import type {
   GoalQuadrantId,
   Situation,
   ThrowType,
+  TurnoverReason,
 } from './types';
 
 // ─── Court zones metadata ──────────────────────────────────────────────
@@ -63,6 +64,22 @@ export const EVENT_TYPES: Record<
   yellow_card: { label: 'Amarilla',     tone: 'warning' },
   half_time:   { label: 'Descanso',     tone: 'card' },
 };
+
+// ─── Motivos de pérdida ───────────────────────────────────────────────
+export const TURNOVER_REASONS: Record<
+  TurnoverReason,
+  { label: string; short: string; icon: string }
+> = {
+  steal:          { label: 'Robo',            short: 'Robo',  icon: '✋' },
+  bad_pass:       { label: 'Mal pase',        short: 'Pase',  icon: '➡️' },
+  bad_reception:  { label: 'Mala recepción',  short: 'Recep.', icon: '🧤' },
+  steps:          { label: 'Pasos',           short: 'Pasos', icon: '👟' },
+  offensive_foul: { label: 'Falta en ataque', short: 'Falta', icon: '⚠️' },
+};
+
+export const TURNOVER_REASON_ORDER: readonly TurnoverReason[] = [
+  'steal', 'bad_pass', 'bad_reception', 'steps', 'offensive_foul',
+] as const;
 
 // ─── Other catalogs ────────────────────────────────────────────────────
 export const COMPETITIONS = [
