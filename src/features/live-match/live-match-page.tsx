@@ -18,6 +18,7 @@ import type {
   HandballEvent,
   PersonRef,
   Team,
+  TurnoverReason,
 } from '@/domain/types';
 import { useMatchStore } from '@/lib/store';
 import { useT } from '@/lib/i18n';
@@ -27,6 +28,7 @@ import { PlayerPicker, type PickerKind } from './player-picker';
 import { LiveStats } from './live-stats';
 import { EventTimeline } from './event-timeline';
 import { ShotOutcomeDialog, type ShotOutcome } from './shot-outcome-dialog';
+import { TurnoverReasonDialog } from './turnover-reason-dialog';
 import { EventEditDialog } from './event-edit-dialog';
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import { LiveMatchFree } from './live-match-free';
@@ -142,6 +144,14 @@ interface PendingTagged {
   team: Team;
   /** Zona de la cancha preservada del draft (para que turnover/exclusion la registren). */
   courtZone: import('@/domain/types').CourtZoneId | null;
+  /** Motivo — solo para type === 'turnover'. Se elige antes del jugador. */
+  turnoverReason?: TurnoverReason | null;
+}
+
+/** Paso previo al picker de jugador: elegir el motivo de la pérdida. */
+interface PendingTurnoverReason {
+  team: Team;
+  courtZone: CourtZoneId | null;
 }
 
 const LiveMatchPagePro = () => {
@@ -176,6 +186,7 @@ const LiveMatchPagePro = () => {
   const [draft, setDraft] = useState<EventDraft>(EMPTY_DRAFT);
   const [pendingShot, setPendingShot] = useState<PendingShot | null>(null);
   const [pendingTagged, setPendingTagged] = useState<PendingTagged | null>(null);
+  const [pendingTurnoverReason, setPendingTurnoverReason] = useState<PendingTurnoverReason | null>(null);
   const [editingEvent, setEditingEvent] = useState<HandballEvent | null>(null);
   
 
@@ -319,6 +330,11 @@ const LiveMatchPagePro = () => {
       maybeAutoSwitch(type, team);
       return;
     }
+    // 🔄 Pérdida: primero preguntamos el motivo, después el jugador.
+    if (type === 'turnover') {
+      setPendingTurnoverReason({ team, courtZone: draft.courtZone });
+      return;
+    }
     // En Modo Rápido el picker es opcional pero se ofrece igual
     // (el user puede saltearlo desde el picker)
     // 🔑 Preservamos draft.courtZone para que turnover/exclusion la registren
@@ -329,9 +345,16 @@ const LiveMatchPagePro = () => {
     });
   };
 
+  const handleTurnoverReasonPicked = (reason: TurnoverReason | null) => {
+    if (!pendingTurnoverReason) return;
+    const { team, courtZone } = pendingTurnoverReason;
+    setPendingTurnoverReason(null);
+    setPendingTagged({ type: 'turnover', team, courtZone, turnoverReason: reason });
+  };
+
   const handleTaggedPicked = (p: PersonRef | null) => {
     if (!pendingTagged) return;
-    const { type, team, courtZone } = pendingTagged;
+    const { type, team, courtZone, turnoverReason } = pendingTagged;
     const kind = rosterKindFor(type);
     addEvent(buildEvent({
       type,
@@ -341,6 +364,7 @@ const LiveMatchPagePro = () => {
         // 🔑 Preservamos la zona de cancha que el usuario haya tocado antes
         // (sin esto, los turnovers/exclusiones nunca aparecen en el mapa de calor)
         courtZone: courtZone ?? null,
+        turnoverReason: turnoverReason ?? null,
         shooter: kind === 'possession' ? p : null,
       },
       clock,
@@ -749,6 +773,12 @@ const LiveMatchPagePro = () => {
         goalZone={draft.goalZone}
         courtZone={draft.courtZone}
         onConfirm={handleShotOutcomePicked}
+      />
+
+      <TurnoverReasonDialog
+        open={!!pendingTurnoverReason}
+        onClose={() => setPendingTurnoverReason(null)}
+        onPick={handleTurnoverReasonPicked}
       />
 
       <EventEditDialog

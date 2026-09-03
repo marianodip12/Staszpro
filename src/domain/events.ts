@@ -21,6 +21,7 @@ export interface DbEventRow {
   goal_section: string | null;    // new string column (tl/tc/.../post/out)
   situation: string | null;
   throw_type: string | null;
+  turnover_reason: string | null;
   shooter_name: string | null;
   shooter_number: number | null;
   goalkeeper_name: string | null;
@@ -75,6 +76,7 @@ export const mapDbEvent = (row: DbEventRow): HandballEvent => ({
   goalZone: decodeGoalZone(row),
   situation: (row.situation as HandballEvent['situation']) ?? null,
   throwType: (row.throw_type as HandballEvent['throwType']) ?? null,
+  turnoverReason: (row.turnover_reason as HandballEvent['turnoverReason']) ?? null,
   shooter: row.shooter_name
     ? { name: row.shooter_name, number: row.shooter_number ?? 0 }
     : null,

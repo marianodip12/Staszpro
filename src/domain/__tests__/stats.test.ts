@@ -4,7 +4,9 @@ import {
   buildHeatCounts,
   buildHeatCountsByTeam,
   buildScorers,
+  buildMinutesPlayed,
   buildSeasonStats,
+  buildTurnoverBreakdown,
   computeMatchStats,
 } from '../stats';
 import type {
@@ -283,6 +285,88 @@ describe('buildScorers', () => {
       mk({ type: 'goal', team: 'home', shooter: { name: 'X', number: 1 } }),
     ];
     expect(buildScorers(events).map((s) => s.name)).toEqual(['X']);
+  });
+});
+
+describe('buildTurnoverBreakdown', () => {
+  it('returns empty totals when there are no turnovers', () => {
+    const bd = buildTurnoverBreakdown([mk({ type: 'goal', team: 'home' })]);
+    expect(bd.homeTotal).toBe(0);
+    expect(bd.awayTotal).toBe(0);
+    expect(bd.byPlayer).toEqual([]);
+  });
+
+  it('tallies turnovers per team and per reason, with unknown for unset', () => {
+    const events = [
+      mk({ type: 'turnover', team: 'home', turnoverReason: 'bad_pass' }),
+      mk({ type: 'turnover', team: 'home', turnoverReason: 'bad_pass' }),
+      mk({ type: 'turnover', team: 'home', turnoverReason: 'steps' }),
+      mk({ type: 'turnover', team: 'home' }), // sin motivo → unknown
+      mk({ type: 'turnover', team: 'away', turnoverReason: 'steal' }),
+    ];
+    const bd = buildTurnoverBreakdown(events);
+    expect(bd.homeTotal).toBe(4);
+    expect(bd.awayTotal).toBe(1);
+    expect(bd.home.bad_pass).toBe(2);
+    expect(bd.home.steps).toBe(1);
+    expect(bd.home.unknown).toBe(1);
+    expect(bd.away.steal).toBe(1);
+  });
+
+  it('aggregates per player (with team) and sorts by total desc', () => {
+    const ana = { name: 'Ana', number: 7 };
+    const beto = { name: 'Beto', number: 9 };
+    const events = [
+      mk({ type: 'turnover', team: 'home', shooter: ana, turnoverReason: 'bad_pass' }),
+      mk({ type: 'turnover', team: 'home', shooter: ana, turnoverReason: 'steps' }),
+      mk({ type: 'turnover', team: 'home', shooter: beto, turnoverReason: 'steal' }),
+      mk({ type: 'turnover', team: 'away' }), // sin shooter → no entra en byPlayer
+    ];
+    const bd = buildTurnoverBreakdown(events);
+    expect(bd.byPlayer).toHaveLength(2);
+    expect(bd.byPlayer[0].name).toBe('Ana');
+    expect(bd.byPlayer[0].total).toBe(2);
+    expect(bd.byPlayer[0].team).toBe('home');
+    expect(bd.byPlayer[0].byReason.bad_pass).toBe(1);
+    expect(bd.byPlayer[1].name).toBe('Beto');
+  });
+});
+
+describe('buildMinutesPlayed', () => {
+  it('returns [] when no event carries a lineup snapshot', () => {
+    expect(buildMinutesPlayed([mk({ type: 'goal', team: 'home', min: 5 })])).toEqual([]);
+  });
+
+  it('attributes each interval to the players of the earlier snapshot', () => {
+    const events = [
+      mk({ type: 'goal', team: 'home', min: 0, lineup: { field: [4, 7, 9], goalkeeper: 1 } }),
+      // sub at 10': 9 out, 11 in
+      mk({ type: 'goal', team: 'home', min: 10, lineup: { field: [4, 7, 11], goalkeeper: 1 } }),
+      mk({ type: 'goal', team: 'home', min: 25, lineup: { field: [4, 7, 11], goalkeeper: 1 } }),
+    ];
+    // last interval extends to last event min (25) → delta 0, no-op
+    const rows = buildMinutesPlayed(events);
+    const byNum = Object.fromEntries(rows.map((r) => [r.number, r.minutes]));
+    expect(byNum[9]).toBe(10);        // 0→10 only
+    expect(byNum[11]).toBe(15);       // 10→25
+    expect(byNum[4]).toBe(25);        // 0→10 + 10→25
+    expect(byNum[7]).toBe(25);
+    expect(byNum[1]).toBe(25);        // GK all along
+  });
+
+  it('closes the last interval at endMinute when provided', () => {
+    const events = [
+      mk({ type: 'goal', team: 'home', min: 50, lineup: { field: [2], goalkeeper: null } }),
+    ];
+    expect(buildMinutesPlayed(events, 60)).toEqual([{ number: 2, minutes: 10 }]);
+  });
+
+  it('ignores away-team lineups', () => {
+    const events = [
+      mk({ type: 'goal', team: 'away', min: 0, lineup: { field: [5], goalkeeper: null } }),
+      mk({ type: 'goal', team: 'away', min: 30, lineup: { field: [5], goalkeeper: null } }),
+    ];
+    expect(buildMinutesPlayed(events)).toEqual([]);
   });
 });
 

@@ -61,6 +61,15 @@ export type Situation = 'igualdad' | 'superioridad' | 'inferioridad';
 // ─── Throw style ──────────────────────────────────────────────────────
 export type ThrowType = 'salto' | 'habilidad' | 'finta' | 'penetracion' | 'otro';
 
+// ─── Turnover reason ──────────────────────────────────────────────────
+// Motivo de una pérdida. Solo aplica a eventos type === 'turnover'.
+export type TurnoverReason =
+  | 'steal'           // robo de pelota (nos la sacaron)
+  | 'bad_pass'        // mal pase
+  | 'bad_reception'   // mala recepción
+  | 'steps'           // pasos / dobles
+  | 'offensive_foul'; // falta en ataque (carga)
+
 // ─── Person refs (embedded, denormalized in events) ───────────────────
 export interface PersonRef {
   name: string;
@@ -92,6 +101,8 @@ export interface HandballEvent {
   // Context
   situation?: Situation | null;
   throwType?: ThrowType | null;
+  /** Motivo — solo para type === 'turnover'. null = sin especificar. */
+  turnoverReason?: TurnoverReason | null;
 
   // Participants
   shooter?: PersonRef | null;
