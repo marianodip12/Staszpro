@@ -36,6 +36,7 @@ import { AiAnalysisPanel } from '@/components/ai-analysis-panel';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { PlayersPanel } from './players-panel';
+import { TurnoverReasonBreakdown } from './turnover-reason-breakdown';
 import { CompareBar } from '@/features/live-match/live-stats';
 import { EventTimeline } from '@/features/live-match/event-timeline';
 import { EventEditDialog } from '@/features/live-match/event-edit-dialog';
@@ -484,6 +485,21 @@ export const MatchAnalysisPage = ({ externalMatch, readonly: readonlyProp = fals
             turnoverMode
           />
         </div>
+      </section>
+
+      {/* Pérdidas — por motivo */}
+      <section>
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="text-xs font-medium text-fg">💔 Pérdidas por motivo</h3>
+        </div>
+        <TurnoverReasonBreakdown
+          events={periodEvents}
+          home={match.home}
+          away={match.away}
+          homeColor={match.homeColor}
+          awayColor={match.awayColor}
+          teamFilter={resolvedTeamFilter}
+        />
       </section>
 
       {/* Players */}

@@ -5,6 +5,7 @@ import {
   buildHeatCountsByTeam,
   buildScorers,
   buildSeasonStats,
+  buildTurnoverBreakdown,
   computeMatchStats,
 } from '../stats';
 import type {
@@ -283,6 +284,50 @@ describe('buildScorers', () => {
       mk({ type: 'goal', team: 'home', shooter: { name: 'X', number: 1 } }),
     ];
     expect(buildScorers(events).map((s) => s.name)).toEqual(['X']);
+  });
+});
+
+describe('buildTurnoverBreakdown', () => {
+  it('returns empty totals when there are no turnovers', () => {
+    const bd = buildTurnoverBreakdown([mk({ type: 'goal', team: 'home' })]);
+    expect(bd.homeTotal).toBe(0);
+    expect(bd.awayTotal).toBe(0);
+    expect(bd.byPlayer).toEqual([]);
+  });
+
+  it('tallies turnovers per team and per reason, with unknown for unset', () => {
+    const events = [
+      mk({ type: 'turnover', team: 'home', turnoverReason: 'bad_pass' }),
+      mk({ type: 'turnover', team: 'home', turnoverReason: 'bad_pass' }),
+      mk({ type: 'turnover', team: 'home', turnoverReason: 'steps' }),
+      mk({ type: 'turnover', team: 'home' }), // sin motivo → unknown
+      mk({ type: 'turnover', team: 'away', turnoverReason: 'steal' }),
+    ];
+    const bd = buildTurnoverBreakdown(events);
+    expect(bd.homeTotal).toBe(4);
+    expect(bd.awayTotal).toBe(1);
+    expect(bd.home.bad_pass).toBe(2);
+    expect(bd.home.steps).toBe(1);
+    expect(bd.home.unknown).toBe(1);
+    expect(bd.away.steal).toBe(1);
+  });
+
+  it('aggregates per player (with team) and sorts by total desc', () => {
+    const ana = { name: 'Ana', number: 7 };
+    const beto = { name: 'Beto', number: 9 };
+    const events = [
+      mk({ type: 'turnover', team: 'home', shooter: ana, turnoverReason: 'bad_pass' }),
+      mk({ type: 'turnover', team: 'home', shooter: ana, turnoverReason: 'steps' }),
+      mk({ type: 'turnover', team: 'home', shooter: beto, turnoverReason: 'steal' }),
+      mk({ type: 'turnover', team: 'away' }), // sin shooter → no entra en byPlayer
+    ];
+    const bd = buildTurnoverBreakdown(events);
+    expect(bd.byPlayer).toHaveLength(2);
+    expect(bd.byPlayer[0].name).toBe('Ana');
+    expect(bd.byPlayer[0].total).toBe(2);
+    expect(bd.byPlayer[0].team).toBe('home');
+    expect(bd.byPlayer[0].byReason.bad_pass).toBe(1);
+    expect(bd.byPlayer[1].name).toBe('Beto');
   });
 });
 

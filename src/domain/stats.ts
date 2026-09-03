@@ -261,6 +261,7 @@ const EMPTY_REASONS = (): Record<TurnoverReasonKey, number> => ({
 export interface TurnoverPlayerRow {
   name: string;
   number: number;
+  team: Team;
   total: number;
   byReason: Record<TurnoverReasonKey, number>;
 }
@@ -289,7 +290,7 @@ export const buildTurnoverBreakdown = (events: HandballEvent[]): TurnoverBreakdo
     if (e.shooter) {
       const pk = `${e.team}:${e.shooter.name}:${e.shooter.number}`;
       if (!players[pk]) {
-        players[pk] = { name: e.shooter.name, number: e.shooter.number, total: 0, byReason: EMPTY_REASONS() };
+        players[pk] = { name: e.shooter.name, number: e.shooter.number, team: e.team, total: 0, byReason: EMPTY_REASONS() };
       }
       players[pk].total++;
       players[pk].byReason[key]++;

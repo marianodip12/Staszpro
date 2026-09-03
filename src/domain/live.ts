@@ -1,4 +1,4 @@
-import type { CourtZoneId, EventType, GoalZoneId, HandballEvent, PersonRef, Player, Situation, Team, ThrowType } from './types';
+import type { CourtZoneId, EventType, GoalZoneId, HandballEvent, PersonRef, Player, Situation, Team, ThrowType, TurnoverReason } from './types';
 
 // ─── Clock ──────────────────────────────────────────────────────────────
 
@@ -81,6 +81,8 @@ export interface EventDraft {
   goalkeeper: PersonRef | null;
   situation: Situation | null;
   throwType: ThrowType | null;
+  /** Motivo de pérdida — solo para type === 'turnover'. null = sin especificar. */
+  turnoverReason: TurnoverReason | null;
 }
 
 export const EMPTY_DRAFT: EventDraft = {
@@ -91,6 +93,7 @@ export const EMPTY_DRAFT: EventDraft = {
   goalkeeper: null,
   situation: null,
   throwType: null,
+  turnoverReason: null,
 };
 
 /**
@@ -180,6 +183,7 @@ export const buildEvent = (input: BuildEventInput): Omit<HandballEvent, 'id' | '
     goalZone: draft.goalZone,
     situation: draft.situation,
     throwType: draft.throwType,
+    turnoverReason: type === 'turnover' ? draft.turnoverReason : null,
     shooter: draft.shooter,
     goalkeeper: draft.goalkeeper,
     sanctioned: sanctioned ?? null,
