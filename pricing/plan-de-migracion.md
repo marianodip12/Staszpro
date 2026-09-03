@@ -92,7 +92,7 @@
 
 ## 5. Qué tocar en la base de datos (Supabase)
 
-> Las tablas de plan/pago **no están en el repo** (`01_schema.sql` solo cubre profiles/teams/players/matches/events). Viven en el proyecto Supabase `emmqrzqxlkqvsqbihwdt`, aplicadas por dashboard. Hay RPCs `get_my_plan`, `create_payment_request` y (presumiblemente) tablas `subscriptions`/`payment_requests` + un enum o CHECK de `plan`.
+> Las tablas de plan/pago **no están en el repo** (`01_schema.sql` solo cubre profiles/teams/players/matches/events). Viven en el proyecto Supabase `xakmuljnclgywxdmgaws`, aplicadas por dashboard. Hay RPCs `get_my_plan`, `create_payment_request` y (presumiblemente) tablas `subscriptions`/`payment_requests` + un enum o CHECK de `plan`.
 
 Cambios:
 1. **Enum/CHECK de `plan`:** mantener `'pro_plus'` como valor aceptado (legacy) pero dejar de emitirlo. `UPDATE ... SET plan='pro' WHERE plan='pro_plus'` (hoy: 0 filas, pero dejar el script listo).
