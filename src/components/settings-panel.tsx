@@ -9,18 +9,16 @@ interface SettingsPanelProps {
 }
 
 /**
- * SETTINGS PANEL — toggles para Superpower Mode + UI Pro Max.
+ * SETTINGS PANEL — toggle para UI Pro Max.
  * Dos variantes para que se pueda usar en sidebar desktop y en header mobile.
  * El estado vive en zustand persisted, así sobrevive recargas.
  */
 export const SettingsPanel = ({ variant = 'sidebar' }: SettingsPanelProps) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const superpowerMode = useMatchStore((s) => s.superpowerMode);
-  const setSuperpowerMode = useMatchStore((s) => s.setSuperpowerMode);
   const uiProMax = useMatchStore((s) => s.uiProMax);
   const setUiProMax = useMatchStore((s) => s.setUiProMax);
-  const anyOn = superpowerMode || uiProMax;
+  const anyOn = uiProMax;
 
   // Cerrar al hacer click afuera (útil sobre todo en variante icon).
   useEffect(() => {
@@ -90,14 +88,6 @@ export const SettingsPanel = ({ variant = 'sidebar' }: SettingsPanelProps) => {
               : 'absolute right-0 mt-2 w-72',
           )}
         >
-          <ToggleRow
-            id="superpower"
-            label="Superpower Mode"
-            icon="⚡"
-            description="Atajos y panel denso en live match"
-            checked={superpowerMode}
-            onChange={setSuperpowerMode}
-          />
           <ToggleRow
             id="ui-pro-max"
             label="UI Pro Max"

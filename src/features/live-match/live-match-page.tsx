@@ -32,7 +32,6 @@ import { TurnoverReasonDialog } from './turnover-reason-dialog';
 import { EventEditDialog } from './event-edit-dialog';
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import { LiveMatchFree } from './live-match-free';
-import { SuperpowerBar } from './superpower-bar';
 import { LineupSlidebar } from './lineup-slidebar';
 import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
 import { hasCompleteMode, hasFormationAnalysis, usePlan } from '@/lib/use-plan';
@@ -491,7 +490,6 @@ const LiveMatchPagePro = () => {
 
       {/* Contenido principal — padding-left en cada breakpoint para no tapar el slidebar fijo */}
       <div className="space-y-3 min-w-0 pl-16 md:pl-20 lg:pl-28">
-      <SuperpowerBar />
       <Scoreboard
         home={match.home}
         away={match.away}
