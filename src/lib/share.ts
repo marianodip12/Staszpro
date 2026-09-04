@@ -218,23 +218,30 @@ export async function loadSharedMatch(token: string): Promise<SharedMatchData | 
         return null;
       }
 
-      const events: HandballEvent[] = ((data.events as any[]) ?? []).map((e: any): HandballEvent => ({
-        id: e.local_id ?? e.id,
-        min: e.minute ?? 0,
-        team: e.team,
-        type: e.type,
-        zone: e.zone ?? null,
-        goalZone: e.goal_section ?? null,
-        situation: e.situation ?? null,
-        throwType: e.throw_type ?? null,
-        shooter: e.shooter_name ? { name: e.shooter_name, number: e.shooter_number ?? 0 } : null,
-        goalkeeper: e.goalkeeper_name ? { name: e.goalkeeper_name, number: e.goalkeeper_number ?? 0 } : null,
-        sanctioned: e.sanctioned_name ? { name: e.sanctioned_name, number: e.sanctioned_number ?? 0 } : null,
-        hScore: e.h_score ?? 0,
-        aScore: e.a_score ?? 0,
-        quickMode: e.quick_mode ?? false,
-        completed: e.completed ?? true,
-      })).sort((a, b) => a.min - b.min);
+      const events: HandballEvent[] = ((data.events as any[]) ?? [])
+        // 🔑 Los eventos soft-deleted (correcciones/mistaps) NO deben verse en el
+        // share. Sin este filtro, el link público recontaba goles/pérdidas borrados
+        // y mostraba un marcador y stats distintos a los del análisis local.
+        .filter((e: any) => !e.deleted_at)
+        .map((e: any): HandballEvent => ({
+          id: e.local_id ?? e.id,
+          min: e.minute ?? 0,
+          team: e.team,
+          type: e.type,
+          zone: e.zone ?? null,
+          goalZone: e.goal_section ?? null,
+          situation: e.situation ?? null,
+          throwType: e.throw_type ?? null,
+          turnoverReason: e.turnover_reason ?? null,
+          shooter: e.shooter_name ? { name: e.shooter_name, number: e.shooter_number ?? 0 } : null,
+          goalkeeper: e.goalkeeper_name ? { name: e.goalkeeper_name, number: e.goalkeeper_number ?? 0 } : null,
+          sanctioned: e.sanctioned_name ? { name: e.sanctioned_name, number: e.sanctioned_number ?? 0 } : null,
+          lineup: e.lineup ?? null,
+          hScore: e.h_score ?? 0,
+          aScore: e.a_score ?? 0,
+          quickMode: e.quick_mode ?? false,
+          completed: e.completed ?? true,
+        })).sort((a, b) => a.min - b.min);
 
       // Score from events is the source of truth — the matches table columns
       // (home_score/away_score) can be stale if the sync hasn't finished.
