@@ -41,12 +41,12 @@ export const MatchesPage = () => {
   const seasonYear = new Date().getFullYear();
 
   const handleStartMatch = (v: NewMatchValues) => {
-    const team = teams.find((tm) => tm.id === v.teamId);
-    if (!team) return;
+    // teamId null = jugar sin equipo guardado (nombre rápido, plantel sobre la marcha).
+    const team = v.teamId ? teams.find((tm) => tm.id === v.teamId) : undefined;
     startLive({
-      home: team.name,
+      home: team ? team.name : (v.homeName || 'Mi equipo'),
       away: v.awayName,
-      homeColor: team.color,
+      homeColor: team ? team.color : '#3B82F6',
       awayColor: '#64748B',
       competition: v.competition,
       round: v.round || null,
@@ -77,11 +77,7 @@ export const MatchesPage = () => {
             <p className="text-xs text-muted-fg mt-1">{t.matches_season} {seasonYear}</p>
           </div>
           {status === 'idle' && !readOnlyClub && (
-            teams.length === 0 ? (
-              <Button size="sm" variant="secondary" onClick={() => navigate('/app/teams')}>
-                {t.matches_load_team}
-              </Button>
-            ) : isFreeAtLimit ? (
+            isFreeAtLimit ? (
               <Button size="sm" onClick={() => navigate('/app/plans')} className="bg-amber-600 hover:bg-amber-700 text-white">
                 ⚡ Pasate a Pro
               </Button>
@@ -131,9 +127,18 @@ export const MatchesPage = () => {
           teams.length === 0 ? (
             <EmptyState
               icon={<BallIcon />}
-              title={t.teams_empty_title}
-              description={t.teams_empty_desc}
-              action={<Button onClick={() => navigate('/app/teams')}>{t.common_go_teams}</Button>}
+              title="Probá tu primer partido"
+              description="No hace falta cargar el equipo para empezar. Arrancá un partido rápido y agregá a los jugadores por su número sobre la marcha. Después, si querés, guardás el plantel."
+              action={
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button onClick={() => setShowNewMatch(true)}>
+                    <PlusIcon /> Empezar sin equipo
+                  </Button>
+                  <Button variant="secondary" onClick={() => navigate('/app/teams')}>
+                    {t.common_go_teams}
+                  </Button>
+                </div>
+              }
             />
           ) : (
             <EmptyState

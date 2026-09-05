@@ -7,18 +7,34 @@ import type { HandballTeam } from '@/domain/types';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 
-export interface NewMatchValues { teamId: string; awayName: string; competition: Competition; round: string; }
+// Sentinela: jugar sin un equipo guardado (nombre rápido, jugadores sobre la marcha).
+export const ADHOC_TEAM = '__adhoc__';
+
+export interface NewMatchValues { teamId: string | null; homeName: string; awayName: string; competition: Competition; round: string; }
 export interface NewMatchDialogProps { open: boolean; onClose: () => void; teams: HandballTeam[]; onStart: (v: NewMatchValues) => void; }
 
 export const NewMatchDialog = ({ open, onClose, teams, onStart }: NewMatchDialogProps) => {
   const t = useT();
-  const [teamId, setTeamId] = useState<string>(teams[0]?.id ?? '');
+  const [teamId, setTeamId] = useState<string>(teams[0]?.id ?? ADHOC_TEAM);
+  const [homeName, setHomeName] = useState('Mi equipo');
   const [awayName, setAwayName] = useState('');
   const [competition, setCompetition] = useState<Competition>('Liga');
   const [round, setRound] = useState('');
 
-  const canStart = teamId !== '' && awayName.trim() !== '';
-  const handleStart = () => { if (!canStart) return; onStart({ teamId, awayName: awayName.trim(), competition, round: round.trim() }); };
+  // Sin equipos guardados, o si el usuario eligió "sin equipo": pedimos un nombre.
+  const adhoc = teams.length === 0 || teamId === ADHOC_TEAM;
+
+  const canStart = awayName.trim() !== '' && (adhoc ? homeName.trim() !== '' : teamId !== '');
+  const handleStart = () => {
+    if (!canStart) return;
+    onStart({
+      teamId: adhoc ? null : teamId,
+      homeName: homeName.trim() || 'Mi equipo',
+      awayName: awayName.trim(),
+      competition,
+      round: round.trim(),
+    });
+  };
 
   return (
     <Dialog open={open} onClose={onClose} title={t.new_match_title}>
@@ -26,22 +42,43 @@ export const NewMatchDialog = ({ open, onClose, teams, onStart }: NewMatchDialog
         <section>
           <Label>{t.new_match_my_team}</Label>
           <div className="flex flex-wrap gap-2 mt-2">
-            {teams.length === 0 ? (
-              <p className="text-sm text-muted-fg">{t.teams_empty_desc}</p>
-            ) : (
-              teams.map((tm) => {
-                const active = teamId === tm.id;
-                return (
-                  <button key={tm.id} type="button" onClick={() => setTeamId(tm.id)}
-                    className={cn('inline-flex items-center gap-2 px-3 h-11 rounded-md border text-sm font-medium transition-colors',
-                      active ? 'border-primary/60 bg-primary/15 text-primary' : 'border-border bg-surface-2 text-muted-fg hover:text-fg')}>
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: tm.color }} />
-                    {tm.name}
-                  </button>
-                );
-              })
+            {teams.map((tm) => {
+              const active = teamId === tm.id;
+              return (
+                <button key={tm.id} type="button" onClick={() => setTeamId(tm.id)}
+                  className={cn('inline-flex items-center gap-2 px-3 h-11 rounded-md border text-sm font-medium transition-colors',
+                    active ? 'border-primary/60 bg-primary/15 text-primary' : 'border-border bg-surface-2 text-muted-fg hover:text-fg')}>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: tm.color }} />
+                  {tm.name}
+                </button>
+              );
+            })}
+            {/* Opción para probar sin equipo guardado */}
+            {teams.length > 0 && (
+              <button type="button" onClick={() => setTeamId(ADHOC_TEAM)}
+                className={cn('inline-flex items-center gap-2 px-3 h-11 rounded-md border border-dashed text-sm font-medium transition-colors',
+                  adhoc ? 'border-primary/60 bg-primary/15 text-primary' : 'border-border bg-surface-2 text-muted-fg hover:text-fg')}>
+                ⚡ Sin equipo
+              </button>
             )}
           </div>
+
+          {/* Nombre rápido cuando se juega sin equipo guardado */}
+          {adhoc && (
+            <div className="mt-3">
+              <Input
+                aria-label="Nombre de mi equipo"
+                placeholder="Nombre de mi equipo"
+                value={homeName}
+                onChange={(e) => setHomeName(e.target.value)}
+                autoComplete="off"
+              />
+              <p className="text-[11px] text-muted-fg mt-1.5">
+                Probá sin cargar el plantel: escribí el nombre y listo. A los jugadores
+                los vas agregando por su número durante el partido.
+              </p>
+            </div>
+          )}
         </section>
 
         <section>
