@@ -20,6 +20,7 @@ import { PlansPage } from '@/features/billing/plans-page';
 import { BillingReturnPage } from '@/features/billing/billing-return-page';
 import { SupportPage } from '@/features/support/support-page';
 import { StaffPage } from '@/features/staff/staff-page';
+import { ProfilePage } from '@/features/profile/profile-page';
 import { PlayerHomePage } from '@/features/player/player-home-page';
 import { PlayerLoadMatchPage } from '@/features/player/player-load-match-page';
 import { PlayerMatchDetailPage } from '@/features/player/player-match-detail-page';
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
           { path: 'plans',           element: <PlansPage /> },
           { path: 'support',         element: <SupportPage /> },
           { path: 'staff',           element: <StaffPage /> },
+          { path: 'profile',         element: <ProfilePage /> },
           { path: 'billing/success', element: <BillingReturnPage status="success" /> },
           { path: 'billing/failure', element: <BillingReturnPage status="failure" /> },
           { path: 'billing/pending', element: <BillingReturnPage status="pending" /> },

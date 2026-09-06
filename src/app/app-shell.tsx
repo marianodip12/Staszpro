@@ -205,6 +205,21 @@ export const AppShell = () => {
           {/* 👔 Selector de contexto de club (solo si fue invitado a alguno) */}
           {!isPlayer && <ClubSwitcher />}
 
+          {/* Mi Perfil — visible para todos los logueados */}
+          <NavLink
+            to="/app/profile"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium mt-1',
+                isActive
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-muted-fg hover:text-fg hover:bg-surface-2',
+              )
+            }
+          >
+            👤 <span>Mi Perfil</span>
+          </NavLink>
+
           {/* Soporte link — visible para todos los logueados */}
           <NavLink
             to="/app/support"
