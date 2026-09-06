@@ -116,9 +116,21 @@ const GoalGridComponent = ({
 
   // Build colored mini-bars for a quadrant showing breakdown
   const renderCountBadges = (id: GoalQuadrantId, x: number, y: number) => {
-    if (!countsByType || !shotColors) return null;
     const total = counts[id] ?? 0;
     if (total === 0) return null;
+
+    const cx0 = x + COL_W / 2;
+    const cy0 = y + ROW_H / 2;
+
+    // Sin desglose por tipo (ej. live match): número simple centrado.
+    if (!countsByType || !shotColors) {
+      return (
+        <text x={cx0} y={cy0 + 5} textAnchor="middle" fill="#fff"
+          fontSize="14" fontWeight="700" style={{ pointerEvents: 'none' }}>
+          {total}
+        </text>
+      );
+    }
 
     // Collect types with counts
     const entries = Object.entries(countsByType)
