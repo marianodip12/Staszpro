@@ -7,6 +7,7 @@ import { computeScore } from '@/domain/events';
 import { buildHeatCounts } from '@/domain/stats';
 import { GOAL_QUADRANT_ORDER } from '@/domain/constants';
 import { isShotEvent } from '@/domain/types';
+import { SHOT_TYPE_COLORS } from '@/features/match-analysis/match-analysis-page';
 import {
   EMPTY_DRAFT,
   buildEvent,
@@ -229,6 +230,40 @@ const LiveMatchPagePro = () => {
       }
     }
     return c;
+  }, [events, attacker]);
+
+  // Desglose por resultado (gol/atajado/errado/palo) para colorear como el análisis.
+  const liveGoalCountsByType = useMemo(() => {
+    const acc: Record<string, Partial<Record<GoalQuadrantId, number>>> = {
+      goal: {}, saved: {}, post: {}, miss_fault: {}, miss: {},
+    };
+    for (const e of events) {
+      if (e.team !== attacker || !isShotEvent(e.type)) continue;
+      const g = e.goalZone;
+      if (!g || !(GOAL_QUADRANT_ORDER as readonly string[]).includes(g)) continue;
+      const q = g as GoalQuadrantId;
+      if (e.type === 'goal') acc.goal[q] = (acc.goal[q] ?? 0) + 1;
+      else if (e.type === 'saved') acc.saved[q] = (acc.saved[q] ?? 0) + 1;
+      else if (e.type === 'post') acc.post[q] = (acc.post[q] ?? 0) + 1;
+      else if (e.type === 'miss') acc.miss[q] = (acc.miss[q] ?? 0) + 1;
+    }
+    return acc;
+  }, [events, attacker]);
+
+  const liveZoneCountsByType = useMemo(() => {
+    const acc: Record<string, Partial<Record<CourtZoneId, number>>> = {
+      goal: {}, saved: {}, post: {}, miss_fault: {}, miss: {},
+    };
+    for (const e of events) {
+      if (e.team !== attacker || !isShotEvent(e.type) || !e.zone) continue;
+      const z = e.zone;
+      if (e.type === 'goal') acc.goal[z] = (acc.goal[z] ?? 0) + 1;
+      else if (e.type === 'saved') acc.saved[z] = (acc.saved[z] ?? 0) + 1;
+      else if (e.type === 'post') acc.post[z] = (acc.post[z] ?? 0) + 1;
+      else if (e.type === 'miss' && e.goalZone === 'out') acc.miss_fault[z] = (acc.miss_fault[z] ?? 0) + 1;
+      else if (e.type === 'miss') acc.miss[z] = (acc.miss[z] ?? 0) + 1;
+    }
+    return acc;
   }, [events, attacker]);
 
   const setAttackerAndReset = (t: Team) => {
@@ -633,6 +668,8 @@ const LiveMatchPagePro = () => {
             selected={draft.goalZone}
             onSelect={handleGoalZoneTap}
             counts={liveGoalCounts}
+            countsByType={liveGoalCountsByType}
+            shotColors={SHOT_TYPE_COLORS}
           />
         </div>
         <div className="grid grid-cols-2 gap-1.5 mt-2 max-w-sm md:max-w-md mx-auto">
@@ -672,6 +709,8 @@ const LiveMatchPagePro = () => {
             selectedZone={draft.courtZone === 'long_range' ? null : draft.courtZone}
             onZoneSelect={handleCourtZoneTap}
             heatmap={liveZoneCounts}
+            countsByType={liveZoneCountsByType}
+            shotColors={SHOT_TYPE_COLORS}
           />
           <button
             type="button"
