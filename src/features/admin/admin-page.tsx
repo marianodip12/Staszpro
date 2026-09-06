@@ -55,7 +55,16 @@ interface VisitStat {
   unique_users: number;
 }
 
-type Tab = 'matches' | 'users' | 'payments' | 'tickets' | 'visits';
+interface ActiveUser {
+  user_id: string;
+  user_email: string;
+  plan: string;
+  last_seen: string;
+  last_path: string;
+  minutes_ago: number;
+}
+
+type Tab = 'active' | 'matches' | 'users' | 'payments' | 'tickets' | 'visits';
 
 export const AdminPage = () => {
 
@@ -67,6 +76,8 @@ export const AdminPage = () => {
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [unreadChats, setUnreadChats] = useState(0);
   const [visits, setVisits] = useState<VisitStat[]>([]);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+  const [activeMinutes, setActiveMinutes] = useState(15);
   const [loading, setLoading] = useState(true);
   const [seedingUser, setSeedingUser] = useState<string | null>(null);
 
@@ -124,11 +135,27 @@ export const AdminPage = () => {
     setVisits((data as VisitStat[]) ?? []);
   }, []);
 
+  const loadActive = useCallback(async () => {
+    const { data, error } = await supabase.rpc('admin_get_active_users', { p_minutes: activeMinutes });
+    if (error) {
+      console.error('[admin] loadActive error:', error.message);
+    }
+    setActiveUsers((data as ActiveUser[]) ?? []);
+  }, [activeMinutes]);
+
   useEffect(() => {
     if (isAdmin !== true) return;
     setLoading(true);
-    Promise.all([loadMatches(), loadUsers(), loadPayments(), loadVisits()]).finally(() => setLoading(false));
-  }, [isAdmin, loadMatches, loadUsers, loadPayments, loadVisits]);
+    Promise.all([loadMatches(), loadUsers(), loadPayments(), loadVisits(), loadActive()]).finally(() => setLoading(false));
+  }, [isAdmin, loadMatches, loadUsers, loadPayments, loadVisits, loadActive]);
+
+  // Auto-refresco de "Activos" mientras esa pestaña está abierta (cada 30s).
+  useEffect(() => {
+    if (isAdmin !== true || tab !== 'active') return;
+    void loadActive();
+    const iv = window.setInterval(() => { void loadActive(); }, 30000);
+    return () => window.clearInterval(iv);
+  }, [isAdmin, tab, loadActive]);
 
   // Polling de chats sin leer (cada 15s en el panel admin)
   useEffect(() => {
@@ -259,7 +286,10 @@ export const AdminPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg border border-border bg-surface p-1 w-fit">
+      <div className="flex gap-1 rounded-lg border border-border bg-surface p-1 w-fit flex-wrap">
+        <TabBtn active={tab === 'active'} onClick={() => setTab('active')}>
+          🟢 Activos ({activeUsers.length})
+        </TabBtn>
         <TabBtn active={tab === 'matches'} onClick={() => setTab('matches')}>
           📋 Partidos ({matches.length})
         </TabBtn>
@@ -285,6 +315,76 @@ export const AdminPage = () => {
         <div className="flex items-center justify-center py-12 text-muted-fg text-sm">
           <span className="inline-block w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin mr-2" />
           Cargando…
+        </div>
+      ) : tab === 'active' ? (
+        /* ─── ACTIVE USERS ─── */
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-muted-fg">
+              Usuarios con actividad en los últimos{' '}
+              <strong className="text-fg">{activeMinutes} min</strong>. Se actualiza solo cada 30s.
+            </p>
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
+              {[5, 15, 30, 60].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setActiveMinutes(m)}
+                  className={cn(
+                    'px-2.5 h-7 rounded-md text-xs font-medium transition-colors',
+                    activeMinutes === m ? 'bg-primary text-primary-fg' : 'text-muted-fg hover:text-fg',
+                  )}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-surface-2/40">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-fg uppercase tracking-wider">Usuario</th>
+                    <th className="text-center px-3 py-3 text-xs font-semibold text-muted-fg uppercase tracking-wider">Plan</th>
+                    <th className="text-left px-3 py-3 text-xs font-semibold text-muted-fg uppercase tracking-wider">Pantalla</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-muted-fg uppercase tracking-wider">Última actividad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeUsers.map((u) => (
+                    <tr key={u.user_id} className="border-b border-border/50 hover:bg-surface-2/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-2">
+                          <span className={cn(
+                            'w-2 h-2 rounded-full',
+                            u.minutes_ago <= 5 ? 'bg-emerald-500' : u.minutes_ago <= 15 ? 'bg-amber-500' : 'bg-muted-fg/40',
+                          )} />
+                          <span className="text-xs truncate max-w-[200px]" title={u.user_email}>{u.user_email}</span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className={cn(
+                          'text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase',
+                          u.plan === 'free' ? 'text-muted-fg border-border' : 'text-emerald-400 border-emerald-500/40',
+                        )}>{u.plan}</span>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-muted-fg font-mono">{u.last_path}</td>
+                      <td className="px-4 py-3 text-right text-xs whitespace-nowrap">
+                        {u.minutes_ago <= 0 ? 'ahora mismo' : `hace ${u.minutes_ago} min`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {activeUsers.length === 0 && (
+              <div className="py-8 text-center text-sm text-muted-fg">
+                Nadie activo en los últimos {activeMinutes} min.
+              </div>
+            )}
+          </div>
         </div>
       ) : tab === 'matches' ? (
         /* ─── MATCHES TABLE ─── */
