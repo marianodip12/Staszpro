@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { CourtView } from '@/components/handball/court-view';
 import { GoalGrid } from '@/components/handball/goal-grid';
 import { computeScore } from '@/domain/events';
+import { buildHeatCounts } from '@/domain/stats';
+import { GOAL_QUADRANT_ORDER } from '@/domain/constants';
+import { isShotEvent } from '@/domain/types';
 import {
   EMPTY_DRAFT,
   buildEvent,
@@ -14,6 +17,7 @@ import {
 import type {
   CourtZoneId,
   EventType,
+  GoalQuadrantId,
   GoalZoneId,
   HandballEvent,
   PersonRef,
@@ -207,6 +211,25 @@ const LiveMatchPagePro = () => {
   }
 
   const score = computeScore(events);
+
+  // Contadores en vivo del equipo que se está cargando (atacante): tiros por
+  // zona de cancha y por cuadrante del arco. Se muestran arriba de los
+  // selectores para ver el mapa acumulándose durante el partido.
+  const liveZoneCounts = useMemo(
+    () => buildHeatCounts(events.filter((e) => e.team === attacker && isShotEvent(e.type))),
+    [events, attacker],
+  );
+  const liveGoalCounts = useMemo(() => {
+    const c: Partial<Record<GoalQuadrantId, number>> = {};
+    for (const e of events) {
+      if (e.team !== attacker || !isShotEvent(e.type)) continue;
+      const g = e.goalZone;
+      if (g && (GOAL_QUADRANT_ORDER as readonly string[]).includes(g)) {
+        c[g as GoalQuadrantId] = (c[g as GoalQuadrantId] ?? 0) + 1;
+      }
+    }
+    return c;
+  }, [events, attacker]);
 
   const setAttackerAndReset = (t: Team) => {
     setAttacker(t);
@@ -609,6 +632,7 @@ const LiveMatchPagePro = () => {
           <GoalGrid
             selected={draft.goalZone}
             onSelect={handleGoalZoneTap}
+            counts={liveGoalCounts}
           />
         </div>
         <div className="grid grid-cols-2 gap-1.5 mt-2 max-w-sm md:max-w-md mx-auto">
@@ -647,6 +671,7 @@ const LiveMatchPagePro = () => {
           <CourtView
             selectedZone={draft.courtZone === 'long_range' ? null : draft.courtZone}
             onZoneSelect={handleCourtZoneTap}
+            heatmap={liveZoneCounts}
           />
           <button
             type="button"
