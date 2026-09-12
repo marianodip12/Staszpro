@@ -20,6 +20,7 @@ import { ConfirmEmailBanner } from '@/components/confirm-email-banner';
 import { ClubSwitcher, ClubContextBanner } from '@/components/club-switcher';
 import { clearClubContextSilent } from '@/lib/club-context';
 import { useProfileType } from '@/lib/use-profile-type';
+import { ProfilePrompt } from '@/features/profile/profile-prompt';
 
 export const AppShell = () => {
   const location = useLocation();
@@ -368,6 +369,9 @@ export const AppShell = () => {
             <Outlet />
           </div>
         </main>
+
+        {/* Prompt para completar el perfil (una vez por sesión si está vacío) */}
+        <ProfilePrompt />
 
         {/* Bottom nav — mobile & tablet only */}
         <nav className="lg:hidden fixed md:relative bottom-0 left-0 right-0 z-50 bg-bg/95 backdrop-blur border-t border-border flex pb-[env(safe-area-inset-bottom,0)] md:pb-0 md:flex-row md:justify-center md:gap-2 md:p-3">
