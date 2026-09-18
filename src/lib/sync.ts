@@ -591,32 +591,10 @@ async function downloadFromServer(uid: string): Promise<void> {
     // salteaba con continue y las correcciones nunca llegaban al cliente.
     const updates = new Map<string, Partial<MatchSummary>>();
 
-    for (const m of serverMatches) {
-      const localId: string = m.local_id ?? m.id;
-      if (localIds.has(localId)) {
-        matchCache.set(localId, m.id);
-        const activeEvents = (m.events ?? []).filter((e: any) => e.deleted_at == null);
-        for (const ev of activeEvents) {
-          if (ev.local_id) eventCache.add(ev.local_id);
-        }
-        const lm = local.completed.find((x) => x.id === localId);
-        if (lm) {
-          const patch: Partial<MatchSummary> = {};
-          if (lm.hs !== (m.home_score ?? 0)) patch.hs = m.home_score ?? 0;
-          if (lm.as !== (m.away_score ?? 0)) patch.as = m.away_score ?? 0;
-          if (lm.home !== m.home_name) patch.home = m.home_name;
-          if (lm.away !== m.away_name) patch.away = m.away_name;
-          if ((lm.date ?? null) !== (m.match_date ?? null)) patch.date = m.match_date ?? null;
-          if ((lm.competition ?? null) !== (m.competition ?? null)) patch.competition = m.competition ?? null;
-          if (Object.keys(patch).length > 0) updates.set(localId, patch);
-        }
-        continue;
-      }
-
-      // Filtrar también eventos eliminados (ej: gol falso soft-deleted server-side).
-      const events: HandballEvent[] = (m.events ?? [])
-        .filter((e: any) => e.deleted_at == null)
-        .map((e: any): HandballEvent => ({
+    // Mapea los eventos (no borrados) de un match del server al shape del dominio.
+    const mapEvents = (mm: any): HandballEvent[] => (mm.events ?? [])
+      .filter((e: any) => e.deleted_at == null)
+      .map((e: any): HandballEvent => ({
         id: e.local_id ?? e.id,
         min: e.minute ?? 0,
         team: e.team,
@@ -634,7 +612,47 @@ async function downloadFromServer(uid: string): Promise<void> {
         quickMode: e.quick_mode ?? false,
         completed: e.completed ?? true,
         lineup: e.lineup ?? null,
-      }));
+      }))
+      .sort((a: HandballEvent, b: HandballEvent) => a.min - b.min);
+
+    // Firma liviana de un set de eventos para detectar diferencias (nombres,
+    // tipo, participantes). Ordenada por id para ser estable ante reordenamientos.
+    const eventsSig = (evs: HandballEvent[]): string => evs
+      .map((e) => `${e.id}|${e.type}|${e.shooter?.name ?? ''}#${e.shooter?.number ?? ''}|${e.goalkeeper?.name ?? ''}#${e.goalkeeper?.number ?? ''}|${e.sanctioned?.name ?? ''}#${e.sanctioned?.number ?? ''}`)
+      .sort()
+      .join(';');
+
+    for (const m of serverMatches) {
+      const localId: string = m.local_id ?? m.id;
+      if (localIds.has(localId)) {
+        matchCache.set(localId, m.id);
+        const activeEvents = (m.events ?? []).filter((e: any) => e.deleted_at == null);
+        for (const ev of activeEvents) {
+          if (ev.local_id) eventCache.add(ev.local_id);
+        }
+        const lm = local.completed.find((x) => x.id === localId);
+        if (lm) {
+          const patch: Partial<MatchSummary> = {};
+          if (lm.hs !== (m.home_score ?? 0)) patch.hs = m.home_score ?? 0;
+          if (lm.as !== (m.away_score ?? 0)) patch.as = m.away_score ?? 0;
+          if (lm.home !== m.home_name) patch.home = m.home_name;
+          if (lm.away !== m.away_name) patch.away = m.away_name;
+          if ((lm.date ?? null) !== (m.match_date ?? null)) patch.date = m.match_date ?? null;
+          if ((lm.competition ?? null) !== (m.competition ?? null)) patch.competition = m.competition ?? null;
+          // ⚠️ Reconciliar también los EVENTOS: las correcciones hechas en la base
+          // (renombrar un jugador/arquero, etc.) tienen que llegar a la copia local.
+          // El upload es insert-only, así que el server es la fuente de verdad de
+          // los eventos de un partido finalizado. Solo actualizamos si difieren.
+          const serverEvents = mapEvents(m);
+          if (eventsSig(serverEvents) !== eventsSig(lm.events)) {
+            patch.events = serverEvents;
+          }
+          if (Object.keys(patch).length > 0) updates.set(localId, patch);
+        }
+        continue;
+      }
+
+      const events: HandballEvent[] = mapEvents(m);
 
       newOnes.push({
         id: localId,
