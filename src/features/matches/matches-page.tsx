@@ -19,7 +19,7 @@ export const MatchesPage = () => {
   const [showNewMatch, setShowNewMatch] = useState(false);
   const t = useT();
   const planInfo = usePlan();
-  const { plan, matchCount, matchLimit } = planInfo;
+  const { plan, matchCount, matchLimit, isAdmin } = planInfo;
   const isFreeAtLimit = plan === 'free' && matchLimit > 0 && matchCount >= matchLimit;
   const videoAccess = hasVideoAndAI(planInfo);
 
@@ -113,6 +113,10 @@ export const MatchesPage = () => {
             homeScore={liveScore.h}
             awayScore={liveScore.a}
             onResume={() => navigate('/app/live')}
+            // 🛠️ Solo admin, por ahora: ver el análisis del partido en curso sin
+            // tener que finalizarlo. Usa el mismo fallback de MatchAnalysisPage
+            // que ya trae un match ajeno/no-completado desde el servidor por id.
+            onViewAnalysis={isAdmin ? () => navigate(`/app/analysis/${liveMatch.id}`) : undefined}
           />
         )}
 

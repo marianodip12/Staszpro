@@ -10,9 +10,11 @@ export interface LiveBannerProps {
   home: string; away: string;
   homeScore: number; awayScore: number;
   onResume: () => void;
+  /** 🛠️ Admin-only: ver el análisis del partido tal como va, sin finalizarlo. */
+  onViewAnalysis?: () => void;
 }
 
-export const LiveBanner = ({ home, away, homeScore, awayScore, onResume }: LiveBannerProps) => {
+export const LiveBanner = ({ home, away, homeScore, awayScore, onResume, onViewAnalysis }: LiveBannerProps) => {
   const t = useT();
   return (
     <Card className="border-danger/40 bg-danger/10">
@@ -38,6 +40,12 @@ export const LiveBanner = ({ home, away, homeScore, awayScore, onResume }: LiveB
           className="w-full bg-danger/25 hover:bg-danger/35 text-danger border border-danger/40">
           {t.live_go}
         </Button>
+        {onViewAnalysis && (
+          <Button variant="ghost" size="sm" onClick={onViewAnalysis}
+            className="w-full mt-2 text-muted-fg hover:text-fg">
+            🛠️ Ver análisis (sin finalizar) · admin
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
