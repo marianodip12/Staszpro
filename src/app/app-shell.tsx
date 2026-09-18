@@ -253,6 +253,24 @@ export const AppShell = () => {
             </NavLink>
           )}
 
+          {/* Análisis en vivo — admin-only: ver el análisis de CUALQUIER
+              partido en curso (de cualquier usuario) sin que se finalice. */}
+          {isAdmin && (
+            <NavLink
+              to="/app/admin/live-analysis"
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium mt-1',
+                  isActive
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-fg hover:text-fg hover:bg-surface-2',
+                )
+              }
+            >
+              📊 <span>Análisis en vivo</span>
+            </NavLink>
+          )}
+
           {/* Admin plan preview selector */}
           {isAdmin && <AdminPlanPreview />}
 
