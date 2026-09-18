@@ -615,12 +615,10 @@ async function downloadFromServer(uid: string): Promise<void> {
       }))
       .sort((a: HandballEvent, b: HandballEvent) => a.min - b.min);
 
-    // Firma liviana de un set de eventos para detectar diferencias (nombres,
-    // tipo, participantes). Ordenada por id para ser estable ante reordenamientos.
-    const eventsSig = (evs: HandballEvent[]): string => evs
-      .map((e) => `${e.id}|${e.type}|${e.shooter?.name ?? ''}#${e.shooter?.number ?? ''}|${e.goalkeeper?.name ?? ''}#${e.goalkeeper?.number ?? ''}|${e.sanctioned?.name ?? ''}#${e.sanctioned?.number ?? ''}`)
-      .sort()
-      .join(';');
+    // Firma liviana de UN evento para detectar si el server lo corrigió
+    // (nombres/dorsales/tipo/participantes).
+    const evSig = (e: HandballEvent): string =>
+      `${e.type}|${e.shooter?.name ?? ''}#${e.shooter?.number ?? ''}|${e.goalkeeper?.name ?? ''}#${e.goalkeeper?.number ?? ''}|${e.sanctioned?.name ?? ''}#${e.sanctioned?.number ?? ''}|${e.zone ?? ''}|${e.goalZone ?? ''}`;
 
     for (const m of serverMatches) {
       const localId: string = m.local_id ?? m.id;
@@ -641,11 +639,25 @@ async function downloadFromServer(uid: string): Promise<void> {
           if ((lm.competition ?? null) !== (m.competition ?? null)) patch.competition = m.competition ?? null;
           // ⚠️ Reconciliar también los EVENTOS: las correcciones hechas en la base
           // (renombrar un jugador/arquero, etc.) tienen que llegar a la copia local.
-          // El upload es insert-only, así que el server es la fuente de verdad de
-          // los eventos de un partido finalizado. Solo actualizamos si difieren.
+          // MERGE SEGURO por id: aplicamos la versión del server a los eventos que
+          // existen en ambos (así llega la corrección), PRESERVAMOS los eventos que
+          // solo están en local (cargados y todavía sin subir — la bajada corre
+          // antes que la subida en el boot), y sumamos los que solo están en server.
+          // Las eliminaciones server-side las maneja purgeLocalDeletedMatches.
           const serverEvents = mapEvents(m);
-          if (eventsSig(serverEvents) !== eventsSig(lm.events)) {
-            patch.events = serverEvents;
+          const serverById = new Map(serverEvents.map((e) => [e.id, e] as const));
+          const localIdSet = new Set(lm.events.map((e) => e.id));
+          let eventsChanged = false;
+          const merged: HandballEvent[] = lm.events.map((le) => {
+            const se = serverById.get(le.id);
+            if (se && evSig(se) !== evSig(le)) { eventsChanged = true; return se; }
+            return le;
+          });
+          for (const se of serverEvents) {
+            if (!localIdSet.has(se.id)) { merged.push(se); eventsChanged = true; }
+          }
+          if (eventsChanged) {
+            patch.events = merged.sort((a, b) => a.min - b.min);
           }
           if (Object.keys(patch).length > 0) updates.set(localId, patch);
         }
