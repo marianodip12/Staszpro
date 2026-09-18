@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/cn';
+import { useMatchStore } from '@/lib/store';
+import { NewVideoProjectDialog, type NewVideoProjectValues } from '@/features/video-analysis/new-video-project-dialog';
 
 /**
  * 📊 Análisis en vivo — admin-only.
@@ -32,9 +34,31 @@ interface AdminMatch {
 
 export const AdminLiveAnalysisPage = () => {
   const navigate = useNavigate();
+  const addCompleted = useMatchStore((s) => s.addCompleted);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [matches, setMatches] = useState<AdminMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showNewVideo, setShowNewVideo] = useState(false);
+
+  // 🎥 Crea un partido "vacío" (sin eventos, sin trackear en vivo) solo para
+  // colgar el análisis de video. No pasa por live-match-page ni "Finalizar".
+  const handleCreateVideoProject = (v: NewVideoProjectValues) => {
+    const id = crypto.randomUUID();
+    addCompleted({
+      id,
+      home: v.home,
+      away: v.away,
+      hs: 0,
+      as: 0,
+      date: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+      competition: v.competition || null,
+      homeColor: '#3B82F6',
+      awayColor: '#64748B',
+      events: [],
+    });
+    setShowNewVideo(false);
+    navigate(`/app/video/${id}`);
+  };
 
   useEffect(() => {
     (async () => {
@@ -86,7 +110,7 @@ export const AdminLiveAnalysisPage = () => {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold flex items-center gap-2">
             📊 Análisis en vivo
@@ -102,6 +126,29 @@ export const AdminLiveAnalysisPage = () => {
           {matches.length} en vivo
         </span>
       </header>
+
+      {/* 🎥 Camino separado: analizar solo video, sin cargar/trackear un partido */}
+      <div className="rounded-xl border border-border bg-surface p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-sm font-medium">🎥 Análisis solo de video</div>
+          <p className="text-xs text-muted-fg mt-0.5">
+            Para quien no quiere cargar un partido en vivo: entra directo al editor de video.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowNewVideo(true)}
+          className="h-9 px-4 rounded-md border border-primary/40 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/15 transition-colors whitespace-nowrap"
+        >
+          + Nuevo análisis de video
+        </button>
+      </div>
+
+      <NewVideoProjectDialog
+        open={showNewVideo}
+        onClose={() => setShowNewVideo(false)}
+        onCreate={handleCreateVideoProject}
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-sm text-muted-fg">
