@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NAV_ITEMS } from '@/domain/constants';
 import { useMatchStore } from '@/lib/store';
@@ -118,29 +118,47 @@ export const AppShell = () => {
         <div className="flex-1 flex flex-col gap-1 p-3">
           {/* Nav items de coach (ocultos para jugadores) */}
           {!isPlayer && NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.key}
-              to={item.path}
-              end={item.path === '/app'}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium',
-                  isActive
-                    ? 'bg-primary/15 text-primary border border-primary/40'
-                    : 'text-muted-fg hover:text-fg hover:bg-surface-2',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <NavIcon itemKey={item.key} active={isActive} />
-                  <span className="flex-1">{navLabels[item.key] ?? item.label}</span>
-                  {item.key === 'live' && status === 'live' && (
-                    <span className="w-2 h-2 rounded-full bg-danger block" />
-                  )}
-                </>
+            <Fragment key={item.key}>
+              <NavLink
+                to={item.path}
+                end={item.path === '/app'}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium',
+                    isActive
+                      ? 'bg-primary/15 text-primary border border-primary/40'
+                      : 'text-muted-fg hover:text-fg hover:bg-surface-2',
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <NavIcon itemKey={item.key} active={isActive} />
+                    <span className="flex-1">{navLabels[item.key] ?? item.label}</span>
+                    {item.key === 'live' && status === 'live' && (
+                      <span className="w-2 h-2 rounded-full bg-danger block" />
+                    )}
+                  </>
+                )}
+              </NavLink>
+
+              {/* 🎥 Análisis con video — admin-only, justo debajo de Partidos */}
+              {item.key === 'matches' && isAdmin && (
+                <NavLink
+                  to="/app/admin/video-analysis"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium',
+                      isActive
+                        ? 'bg-primary/15 text-primary border border-primary/40'
+                        : 'text-muted-fg hover:text-fg hover:bg-surface-2',
+                    )
+                  }
+                >
+                  🎥 <span className="flex-1">Análisis con video</span>
+                </NavLink>
               )}
-            </NavLink>
+            </Fragment>
           ))}
 
           {/* Nav item de jugador */}
@@ -253,23 +271,6 @@ export const AppShell = () => {
             </NavLink>
           )}
 
-          {/* Análisis en vivo — admin-only: ver el análisis de CUALQUIER
-              partido en curso (de cualquier usuario) sin que se finalice. */}
-          {isAdmin && (
-            <NavLink
-              to="/app/admin/live-analysis"
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium mt-1',
-                  isActive
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-fg hover:text-fg hover:bg-surface-2',
-                )
-              }
-            >
-              📊 <span>Análisis en vivo</span>
-            </NavLink>
-          )}
 
           {/* Admin plan preview selector */}
           {isAdmin && <AdminPlanPreview />}

@@ -16,7 +16,7 @@ import { AuthPage } from '@/features/auth/auth-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
 import { AdminPage } from '@/features/admin/admin-page';
 import { AdminSupportPage } from '@/features/admin/admin-support-page';
-import { AdminLiveAnalysisPage } from '@/features/admin/admin-live-analysis-page';
+import { AdminVideoAnalysisPage } from '@/features/admin/admin-video-analysis-page';
 import { PlansPage } from '@/features/billing/plans-page';
 import { BillingReturnPage } from '@/features/billing/billing-return-page';
 import { SupportPage } from '@/features/support/support-page';
@@ -73,7 +73,7 @@ const router = createBrowserRouter([
           // Rutas compartidas (admin, planes, soporte, staff, billing) — sin gate por rol
           { path: 'admin',           element: <AdminPage /> },
           { path: 'admin/support',   element: <AdminSupportPage /> },
-          { path: 'admin/live-analysis', element: <AdminLiveAnalysisPage /> },
+          { path: 'admin/video-analysis', element: <AdminVideoAnalysisPage /> },
           { path: 'plans',           element: <PlansPage /> },
           { path: 'support',         element: <SupportPage /> },
           { path: 'staff',           element: <StaffPage /> },
