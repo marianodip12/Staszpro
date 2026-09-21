@@ -142,10 +142,12 @@ export const AppShell = () => {
                 )}
               </NavLink>
 
-              {/* 🎥 Análisis con video — admin-only, justo debajo de Partidos */}
-              {item.key === 'matches' && isAdmin && (
+              {/* 🎥 Análisis con video — para todos los coaches, justo debajo de Partidos.
+                  Adentro, la lista de TODOS los partidos (de todos los usuarios) sigue
+                  siendo admin-only. */}
+              {item.key === 'matches' && (
                 <NavLink
-                  to="/app/admin/video-analysis"
+                  to="/app/video-analysis"
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium',

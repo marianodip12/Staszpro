@@ -9,15 +9,17 @@
  *  - Clip editor + drawing editor (export with MediaRecorder).
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, ArrowLeft, Pencil, Share2 } from 'lucide-react';
 import { useMatchStore } from '@/lib/store';
 import { usePlan, hasVideoAndAI } from '@/lib/use-plan';
 import { useAuth } from '@/lib/auth';
+import { fetchMatchAsAdmin } from '@/lib/sync';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import type { MatchSummary } from '@/domain/types';
 import {
   listVideoEvents,
   createVideoEvent,
@@ -57,7 +59,31 @@ export const VideoAnalysisPage = () => {
   const queryClient = useQueryClient();
 
   const userId = user?.id ?? null;
-  const match = completed.find((m) => m.id === matchId) ?? null;
+  const localMatch = completed.find((m) => m.id === matchId) ?? null;
+
+  // 👮 Fallback de admin: si el proyecto no está en el store local (ej: un
+  // admin entrando al proyecto de video de OTRO usuario), lo bajamos del
+  // servidor. Mismo mecanismo que MatchAnalysisPage. Las RLS de admin
+  // (video_events_admin_select / video_players_admin_select / etc.) permiten
+  // el SELECT de solo lectura.
+  const [adminMatch, setAdminMatch] = useState<MatchSummary | null>(null);
+  const [adminLoading, setAdminLoading] = useState(false);
+  useEffect(() => {
+    if (localMatch || !matchId || !plan.isAdmin) return;
+    let cancelled = false;
+    setAdminLoading(true);
+    void fetchMatchAsAdmin(matchId).then((m) => {
+      if (cancelled) return;
+      setAdminMatch(m);
+      setAdminLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [localMatch, matchId, plan.isAdmin]);
+
+  const match = localMatch ?? adminMatch;
+  // Proyecto ajeno traído como admin: SIEMPRE solo lectura. Escribir acá no
+  // sincronizaría con el dueño real y le pisaría/corrompería sus datos.
+  const readonly = !localMatch && adminMatch !== null;
 
   // ── Player + UI refs/state ──────────────────────────────────────────────
   const videoRef = useRef<VideoPlayerHandle>(null);
@@ -95,7 +121,7 @@ export const VideoAnalysisPage = () => {
       playerId: string | null,
       playerName: string | null,
     ) => {
-      if (!matchId || !userId) return;
+      if (!matchId || !userId || readonly) return;
       const time = videoRef.current?.getCurrentTime() ?? 0;
       const result = inferResult({ tipo, subtype, detail, qualifier });
       try {
@@ -121,7 +147,7 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysis] create event failed:', err);
       }
     },
-    [matchId, userId, queryClient],
+    [matchId, userId, readonly, queryClient],
   );
 
   const handleSeek = useCallback((time: number) => {
@@ -130,6 +156,7 @@ export const VideoAnalysisPage = () => {
 
   const handleDeleteEvent = useCallback(
     async (id: string) => {
+      if (readonly) return;
       try {
         await deleteVideoEvent(id);
         queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
@@ -139,11 +166,12 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysis] delete event failed:', err);
       }
     },
-    [matchId, queryClient],
+    [matchId, readonly, queryClient],
   );
 
   const handleUpdateResult = useCallback(
     async (id: string, result: EventResult) => {
+      if (readonly) return;
       try {
         const updated = await updateVideoEvent(id, { result });
         queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
@@ -153,20 +181,22 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysis] update result failed:', err);
       }
     },
-    [matchId, queryClient],
+    [matchId, readonly, queryClient],
   );
 
   const handleClearAll = useCallback(async () => {
+    if (readonly) return;
     try {
       await Promise.all(events.map((e) => deleteVideoEvent(e.id)));
       queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], []);
     } catch (err) {
       console.error('[VideoAnalysis] clear all failed:', err);
     }
-  }, [events, matchId, queryClient]);
+  }, [events, matchId, readonly, queryClient]);
 
   const handleUpdateClip = useCallback(
     async (eventId: string, clip_start: number, clip_end: number) => {
+      if (readonly) return;
       try {
         const updated = await updateVideoEvent(eventId, { clip_start, clip_end });
         queryClient.setQueryData<VideoEvent[]>(['video-events', matchId], (old) =>
@@ -176,12 +206,12 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysis] update clip failed:', err);
       }
     },
-    [matchId, queryClient],
+    [matchId, readonly, queryClient],
   );
 
   const handleAddPlayer = useCallback(
     async (name: string, number?: string) => {
-      if (!matchId || !userId) return;
+      if (!matchId || !userId || readonly) return;
       try {
         const created = await createVideoPlayer({
           userId,
@@ -197,11 +227,12 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysis] add player failed:', err);
       }
     },
-    [matchId, userId, queryClient],
+    [matchId, userId, readonly, queryClient],
   );
 
   const handleRemovePlayer = useCallback(
     async (id: string) => {
+      if (readonly) return;
       try {
         await deleteVideoPlayer(id);
         queryClient.setQueryData<VideoPlayer[]>(['video-players', matchId], (old) =>
@@ -211,7 +242,7 @@ export const VideoAnalysisPage = () => {
         console.error('[VideoAnalysis] remove player failed:', err);
       }
     },
-    [matchId, queryClient],
+    [matchId, readonly, queryClient],
   );
 
   const openClipEditor = useCallback((start: number, end: number) => {
@@ -267,7 +298,9 @@ export const VideoAnalysisPage = () => {
       <div className="container mx-auto p-4 max-w-3xl">
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-fg">
-            No encontramos el partido.
+            {plan.isAdmin && adminLoading
+              ? 'Buscando el proyecto en el servidor…'
+              : 'No encontramos el partido.'}
             <div className="mt-3">
               <Button variant="secondary" onClick={() => navigate('/app')}>
                 Volver
@@ -331,6 +364,16 @@ export const VideoAnalysisPage = () => {
           </div>
         </div>
       </header>
+
+      {/* 👮 Banner de solo lectura — viendo el proyecto de otro usuario como admin */}
+      {readonly && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2">
+          <div className="max-w-[1400px] mx-auto text-xs font-mono text-amber-400">
+            🔒 Estás viendo el proyecto de otro usuario en modo admin — solo lectura,
+            no se guardan cambios acá.
+          </div>
+        </div>
+      )}
 
       {/* Share link banner */}
       {shareUrl && (
@@ -400,7 +443,7 @@ export const VideoAnalysisPage = () => {
                 </span>
               )}
             </div>
-            <EventButtons players={players} onEvent={handleEvent} disabled={!videoMode} />
+            <EventButtons players={players} onEvent={handleEvent} disabled={!videoMode || readonly} />
           </section>
 
           {/* Clip editor */}

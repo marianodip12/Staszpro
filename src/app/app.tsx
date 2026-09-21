@@ -16,7 +16,7 @@ import { AuthPage } from '@/features/auth/auth-page';
 import { ResetPasswordPage } from '@/features/auth/reset-password-page';
 import { AdminPage } from '@/features/admin/admin-page';
 import { AdminSupportPage } from '@/features/admin/admin-support-page';
-import { AdminVideoAnalysisPage } from '@/features/admin/admin-video-analysis-page';
+import { VideoHubPage } from '@/features/video-analysis/video-hub-page';
 import { PlansPage } from '@/features/billing/plans-page';
 import { BillingReturnPage } from '@/features/billing/billing-return-page';
 import { SupportPage } from '@/features/support/support-page';
@@ -64,6 +64,7 @@ const router = createBrowserRouter([
           { path: 'evolution',       element: <ProfileTypeGuard require="coach"><EvolutionPage /></ProfileTypeGuard> },
           { path: 'analysis/:id',    element: <ProfileTypeGuard require="coach"><MatchAnalysisPage /></ProfileTypeGuard> },
           { path: 'video/:id',       element: <ProfileTypeGuard require="coach"><VideoAnalysisPage /></ProfileTypeGuard> },
+          { path: 'video-analysis',  element: <ProfileTypeGuard require="coach"><VideoHubPage /></ProfileTypeGuard> },
 
           // Rutas de jugador (coaches redirigen a /app)
           { path: 'player/home',       element: <ProfileTypeGuard require="player"><PlayerHomePage /></ProfileTypeGuard> },
@@ -73,7 +74,6 @@ const router = createBrowserRouter([
           // Rutas compartidas (admin, planes, soporte, staff, billing) — sin gate por rol
           { path: 'admin',           element: <AdminPage /> },
           { path: 'admin/support',   element: <AdminSupportPage /> },
-          { path: 'admin/video-analysis', element: <AdminVideoAnalysisPage /> },
           { path: 'plans',           element: <PlansPage /> },
           { path: 'support',         element: <SupportPage /> },
           { path: 'staff',           element: <StaffPage /> },
