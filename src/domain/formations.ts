@@ -167,6 +167,41 @@ const blank = (key: string, lu: LineupSnapshot, mode: LineupMode): FormationStat
 export const hasFormationData = (events: HandballEvent[]): boolean =>
   events.some((e) => e.team === 'home' && e.lineup && e.lineup.field.length > 0);
 
+/**
+ * Devuelve, por cada formación, la lista cruda de eventos atribuibles a ella
+ * (misma lógica de "formación vigente" que `perFormation`): eventos propios
+ * que trajeron ese lineup, y eventos del rival imputados a la formación que
+ * estaba en cancha en ese momento. Sirve para alimentar los mapas de arco,
+ * cancha y zonas de pérdida en el detalle de cada formación.
+ */
+export const eventsByFormation = (
+  events: HandballEvent[],
+  mode: LineupMode,
+): Map<string, HandballEvent[]> => {
+  const map = new Map<string, HandballEvent[]>();
+  let current: LineupSnapshot | null = null;
+  const ordered = [...events].sort((a, b) => a.min - b.min);
+
+  const push = (key: string, e: HandballEvent) => {
+    const arr = map.get(key);
+    if (arr) arr.push(e);
+    else map.set(key, [e]);
+  };
+
+  for (const e of ordered) {
+    if (e.team === 'home' && e.lineup && e.lineup.field.length > 0) current = e.lineup;
+    if (e.team === 'home') {
+      const lu = e.lineup && e.lineup.field.length > 0 ? e.lineup : current;
+      if (!lu) continue;
+      push(lineupKey(lu, mode), e);
+    } else if (e.team === 'away') {
+      if (!current) continue;
+      push(lineupKey(current, mode), e);
+    }
+  }
+  return map;
+};
+
 // ═══════════════════════════════════════════════════════════════════
 //   COMPACTACIÓN — agrupa formaciones "de paso" preservando totales
 // ═══════════════════════════════════════════════════════════════════
