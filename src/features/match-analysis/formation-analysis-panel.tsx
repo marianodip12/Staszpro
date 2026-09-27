@@ -1,15 +1,96 @@
 import { useMemo, useState } from 'react';
-import type { HandballEvent, HandballTeam } from '@/domain/types';
+import type { CourtZoneId, GoalQuadrantId, HandballEvent, HandballTeam } from '@/domain/types';
 import {
   perFormation,
   hasFormationData,
   getFormationTimelines,
+  eventsByFormation,
   compactifyStats,
   TRANSITIONAL_KEY,
   type LineupMode,
   type FormationTimeline,
 } from '@/domain/formations';
+import { GOAL_QUADRANT_ORDER } from '@/domain/constants';
+import { GoalGrid } from '@/components/handball/goal-grid';
+import { CourtView } from '@/components/handball/court-view';
+import { usePlan } from '@/lib/use-plan';
 import { cn } from '@/lib/cn';
+
+// Mismos colores que usa el análisis general del partido (Gol/Atajada/Palo/Con Falta/Errado).
+const SHOT_TYPE_COLORS: Record<string, string> = {
+  goal: '#22c55e',
+  saved: '#3b82f6',
+  post: '#f59e0b',
+  miss_fault: '#a855f7',
+  miss: '#ef4444',
+};
+
+/** Cuenta por cuadrante del arco, discriminado por tipo de tiro, para un equipo dado. */
+const quadCountsByTypeFor = (events: HandballEvent[], team: 'home' | 'away') => {
+  const acc: Record<string, Partial<Record<GoalQuadrantId, number>>> = {
+    goal: {}, saved: {}, post: {}, miss_fault: {}, miss: {},
+  };
+  for (const e of events) {
+    if (e.team !== team) continue;
+    const g = e.goalZone;
+    if (!g || !(GOAL_QUADRANT_ORDER as readonly string[]).includes(g)) continue;
+    const q = g as GoalQuadrantId;
+    if (e.type === 'goal') acc.goal[q] = (acc.goal[q] ?? 0) + 1;
+    else if (e.type === 'saved') acc.saved[q] = (acc.saved[q] ?? 0) + 1;
+    else if (e.type === 'post') acc.post[q] = (acc.post[q] ?? 0) + 1;
+    else if (e.type === 'miss' && e.goalZone === 'out') acc.miss_fault[q] = (acc.miss_fault[q] ?? 0) + 1;
+    else if (e.type === 'miss') acc.miss[q] = (acc.miss[q] ?? 0) + 1;
+  }
+  return acc;
+};
+
+/** Cuenta total por cuadrante (para el heatmap base de GoalGrid). */
+const quadTotalsFor = (byType: Record<string, Partial<Record<GoalQuadrantId, number>>>) => {
+  const total: Partial<Record<GoalQuadrantId, number>> = {};
+  for (const bucket of Object.values(byType)) {
+    for (const [q, n] of Object.entries(bucket)) {
+      total[q as GoalQuadrantId] = (total[q as GoalQuadrantId] ?? 0) + (n ?? 0);
+    }
+  }
+  return total;
+};
+
+/** Cuenta por zona de cancha, discriminado por tipo de tiro, para un equipo dado. */
+const zoneCountsByTypeFor = (events: HandballEvent[], team: 'home' | 'away') => {
+  const acc: Record<string, Partial<Record<CourtZoneId, number>>> = {
+    goal: {}, saved: {}, post: {}, miss_fault: {}, miss: {},
+  };
+  for (const e of events) {
+    if (e.team !== team || !e.zone) continue;
+    const z = e.zone;
+    if (e.type === 'goal') acc.goal[z] = (acc.goal[z] ?? 0) + 1;
+    else if (e.type === 'saved') acc.saved[z] = (acc.saved[z] ?? 0) + 1;
+    else if (e.type === 'post') acc.post[z] = (acc.post[z] ?? 0) + 1;
+    else if (e.type === 'miss' && e.goalZone === 'out') acc.miss_fault[z] = (acc.miss_fault[z] ?? 0) + 1;
+    else if (e.type === 'miss') acc.miss[z] = (acc.miss[z] ?? 0) + 1;
+  }
+  return acc;
+};
+
+const zoneTotalsFor = (byType: Record<string, Partial<Record<CourtZoneId, number>>>) => {
+  const total: Partial<Record<CourtZoneId, number>> = {};
+  for (const bucket of Object.values(byType)) {
+    for (const [z, n] of Object.entries(bucket)) {
+      total[z as CourtZoneId] = (total[z as CourtZoneId] ?? 0) + (n ?? 0);
+    }
+  }
+  return total;
+};
+
+/** Pérdidas por zona de cancha, para un equipo dado. */
+const turnoverZoneCountsFor = (events: HandballEvent[], team: 'home' | 'away') => {
+  const result: Partial<Record<CourtZoneId, number>> = {};
+  for (const e of events) {
+    if (e.type !== 'turnover' || e.team !== team || !e.zone) continue;
+    result[e.zone] = (result[e.zone] ?? 0) + 1;
+  }
+  return result;
+};
 
 /**
  * 📊 Panel de análisis por formación — v3.
@@ -31,6 +112,7 @@ export const FormationAnalysisPanel = ({
   events: HandballEvent[];
   myTeam: HandballTeam | null;
 }) => {
+  const { isAdmin } = usePlan();
   const [mode, setMode] = useState<LineupMode>('field');
   const [compactMode, setCompactMode] = useState<boolean>(true);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
@@ -38,6 +120,11 @@ export const FormationAnalysisPanel = ({
   const has = useMemo(() => hasFormationData(events), [events]);
   const stats = useMemo(() => perFormation(events, mode), [events, mode]);
   const timelines = useMemo(() => getFormationTimelines(events, mode), [events, mode]);
+  // Mapas de arco/cancha/pérdidas por formación — en desarrollo, solo admin por ahora.
+  const formationEvents = useMemo(
+    () => (isAdmin ? eventsByFormation(events, mode) : null),
+    [events, mode, isAdmin],
+  );
   // Modo compacto: agrupa las formaciones de 1 solo evento (típicamente "de paso"
   // por cambios con el reloj corriendo) en una fila sintética "Cambios en curso".
   // Preserva totales de forma exacta (suma de eventos idéntica a la vista completa).
@@ -226,7 +313,11 @@ export const FormationAnalysisPanel = ({
                   {isExpanded && timeline && (
                     <tr key={`${s.key}-detail`} className="bg-primary/5">
                       <td colSpan={colSpan} className="p-3">
-                        <FormationDetail timeline={timeline} matchLastMin={matchLastMin} />
+                        <FormationDetail
+                          timeline={timeline}
+                          matchLastMin={matchLastMin}
+                          formationEvents={formationEvents?.get(s.key) ?? null}
+                        />
                       </td>
                     </tr>
                   )}
@@ -256,9 +347,12 @@ export const FormationAnalysisPanel = ({
 const FormationDetail = ({
   timeline,
   matchLastMin,
+  formationEvents,
 }: {
   timeline: FormationTimeline;
   matchLastMin: number;
+  /** null = sección admin-only no disponible para este usuario. */
+  formationEvents: HandballEvent[] | null;
 }) => {
   const { segments, scorePoints, startScore, endScore } = timeline;
   const totalMinutesUsed = segments.reduce((acc, s) => acc + (s.to - s.from), 0);
@@ -300,6 +394,114 @@ const FormationDetail = ({
           startScore={startScore}
           endScore={endScore}
         />
+      </div>
+
+      {/* Mapas de arco/cancha/pérdidas — 🚧 en desarrollo, solo visible para admin */}
+      {formationEvents && <FormationShotMaps events={formationEvents} />}
+    </div>
+  );
+};
+
+// ───────────── Mapas de arco / cancha / pérdidas (🚧 admin only) ───────
+
+const FormationShotMaps = ({ events }: { events: HandballEvent[] }) => {
+  const attackQuadByType = quadCountsByTypeFor(events, 'home');
+  const attackQuadTotals = quadTotalsFor(attackQuadByType);
+  const attackZoneByType = zoneCountsByTypeFor(events, 'home');
+  const attackZoneTotals = zoneTotalsFor(attackZoneByType);
+
+  const defenseQuadByType = quadCountsByTypeFor(events, 'away');
+  const defenseQuadTotals = quadTotalsFor(defenseQuadByType);
+  const defenseZoneByType = zoneCountsByTypeFor(events, 'away');
+  const defenseZoneTotals = zoneTotalsFor(defenseZoneByType);
+
+  const turnoversMine = turnoverZoneCountsFor(events, 'home');
+  const turnoversRival = turnoverZoneCountsFor(events, 'away');
+  const turnoverCountMine = Object.values(turnoversMine).reduce((a, n) => a + (n ?? 0), 0);
+  const turnoverCountRival = Object.values(turnoversRival).reduce((a, n) => a + (n ?? 0), 0);
+
+  const noop = () => {};
+
+  return (
+    <div className="space-y-4 pt-1 border-t border-border/40">
+      <div className="flex items-center gap-1.5 text-[9px] text-warning/90">
+        <span>🚧</span>
+        <span>En desarrollo — visible solo para admin por ahora.</span>
+      </div>
+
+      {/* Ataque */}
+      <div>
+        <div className="text-[10px] font-semibold text-success mb-1.5">
+          🥅 Ataque con esta formación — de dónde tiraron y a dónde fue
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="max-w-xs mx-auto w-full">
+            <div className="text-[9px] text-muted-fg text-center mb-1">Arco</div>
+            <GoalGrid
+              counts={attackQuadTotals}
+              countsByType={attackQuadByType}
+              shotColors={SHOT_TYPE_COLORS}
+              selected={null}
+              onSelect={noop}
+            />
+          </div>
+          <div className="max-w-xs mx-auto w-full">
+            <div className="text-[9px] text-muted-fg text-center mb-1">Cancha — desde dónde tiraron</div>
+            <CourtView
+              heatmap={attackZoneTotals}
+              countsByType={attackZoneByType}
+              shotColors={SHOT_TYPE_COLORS}
+              selectedZone={null}
+              onZoneSelect={noop}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Defensa */}
+      <div>
+        <div className="text-[10px] font-semibold text-danger mb-1.5">
+          🛡️ Defensa con esta formación — de dónde te tiraron y a dónde fue
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="max-w-xs mx-auto w-full">
+            <div className="text-[9px] text-muted-fg text-center mb-1">Arco (mi arquero)</div>
+            <GoalGrid
+              counts={defenseQuadTotals}
+              countsByType={defenseQuadByType}
+              shotColors={SHOT_TYPE_COLORS}
+              selected={null}
+              onSelect={noop}
+            />
+          </div>
+          <div className="max-w-xs mx-auto w-full">
+            <div className="text-[9px] text-muted-fg text-center mb-1">Cancha — desde dónde tiró el rival</div>
+            <CourtView
+              heatmap={defenseZoneTotals}
+              countsByType={defenseZoneByType}
+              shotColors={SHOT_TYPE_COLORS}
+              selectedZone={null}
+              onZoneSelect={noop}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Pérdidas */}
+      <div>
+        <div className="text-[10px] font-semibold text-muted-fg mb-1.5">
+          💔 Pérdidas con esta formación en cancha ({turnoverCountMine} propias · {turnoverCountRival} del rival)
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="max-w-xs mx-auto w-full">
+            <div className="text-[9px] text-muted-fg text-center mb-1">Mías — dónde perdí la pelota</div>
+            <CourtView heatmap={turnoversMine} selectedZone={null} onZoneSelect={noop} turnoverMode />
+          </div>
+          <div className="max-w-xs mx-auto w-full">
+            <div className="text-[9px] text-muted-fg text-center mb-1">Del rival</div>
+            <CourtView heatmap={turnoversRival} selectedZone={null} onZoneSelect={noop} turnoverMode />
+          </div>
+        </div>
       </div>
     </div>
   );
