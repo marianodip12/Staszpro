@@ -30,6 +30,7 @@ export const MatchesPage = () => {
   const liveEvents  = useMatchStore((s) => s.liveEvents);
   const completed   = useMatchStore((s) => s.completed);
   const startLive   = useMatchStore((s) => s.startLive);
+  const selectTeam  = useMatchStore((s) => s.selectTeam);
   const removeCompleted = useMatchStore((s) => s.removeCompleted);
   const syncing = useMatchStore((s) => s.syncing);
 
@@ -43,6 +44,13 @@ export const MatchesPage = () => {
   const handleStartMatch = (v: NewMatchValues) => {
     // teamId null = jugar sin equipo guardado (nombre rápido, plantel sobre la marcha).
     const team = v.teamId ? teams.find((tm) => tm.id === v.teamId) : undefined;
+    // Sincronizamos selectedTeamId con el equipo elegido para ESTE partido —
+    // si no, paneles como el de formación/lineup (que leen selectHomeTeam,
+    // no el nombre del partido) se quedan mostrando el plantel de cualquier
+    // otro equipo que haya quedado seleccionado antes (bug: Equipos → Ballester
+    // mostraba el plantel de "Gei" en vivo). En modo "sin equipo" limpiamos
+    // la selección para que no arrastre un plantel ajeno.
+    selectTeam(team ? team.id : null);
     startLive({
       home: team ? team.name : (v.homeName || 'Mi equipo'),
       away: v.awayName,
