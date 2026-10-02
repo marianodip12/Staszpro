@@ -112,7 +112,7 @@ export const isShotDraftComplete = (draft: EventDraft): boolean =>
  * also handle variants case-insensitively since users type these manually.
  */
 export const isGoalkeeper = (p: Player): boolean =>
-  p.position.trim().toLowerCase().startsWith('arquero');
+  (p.position ?? '').trim().toLowerCase().startsWith('arquero');
 
 export interface RosterSplit {
   goalkeepers: Player[];
