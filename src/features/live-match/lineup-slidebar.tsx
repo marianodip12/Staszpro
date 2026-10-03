@@ -90,7 +90,7 @@ export const LineupSlidebar = ({ className }: { className?: string }) => {
   );
 
   const goalkeeperCandidates = useMemo(
-    () => benchPlayers.filter((p) => /arq|gk|portero|golero/i.test(p.position)),
+    () => benchPlayers.filter((p) => /arq|gk|portero|golero/i.test(p.position ?? '')),
     [benchPlayers],
   );
 
@@ -108,7 +108,7 @@ export const LineupSlidebar = ({ className }: { className?: string }) => {
     if (isExcluded(num)) return; // no debería llegar acá pero por si acaso
     const p = byNumber.get(num);
     // Si el suplente es arquero y el arco está vacío → arquero directo
-    if (p && gkNum == null && /arq|gk|portero|golero/i.test(p.position) && selectedField == null) {
+    if (p && gkNum == null && /arq|gk|portero|golero/i.test(p.position ?? '') && selectedField == null) {
       setGoalkeeper(num);
       return;
     }
@@ -318,7 +318,7 @@ export const LineupSlidebar = ({ className }: { className?: string }) => {
                 onClick={() => handleBenchClick(p.number)}
                 onDragStart={handleDragStart({ num: p.number, from: 'banco' })}
                 onDragEnd={handleDragEnd}
-                disabled={isFieldFull && selectedField == null && !(gkNum == null && /arq|gk|portero|golero/i.test(p.position))}
+                disabled={isFieldFull && selectedField == null && !(gkNum == null && /arq|gk|portero|golero/i.test(p.position ?? ''))}
               />
             ))
           )}

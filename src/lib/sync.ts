@@ -353,7 +353,12 @@ async function downloadTeamsFromServer(uid: string): Promise<void> {
             id: p.local_id ?? p.id,
             name: p.name,
             number: p.number ?? 0,
-            position: p.position ?? null,
+            // ⚠️ Player.position está tipado como `string` (no nullable) en
+            // todo el domain/features, pero la columna DB sí permite null
+            // (ej. jugador cargado por SQL, o un flujo que no lo setea).
+            // Coalesceamos acá, en el borde de ingestión, en vez de parchear
+            // cada .trim()/.toLowerCase() consumidor por separado.
+            position: p.position ?? '',
           };
         });
 

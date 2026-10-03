@@ -178,8 +178,11 @@ export const LiveMatchFree = ({ modeSwitch }: LiveMatchFreeProps = {}) => {
     return null;
   }, [pending, match, teams, events]);
 
-  const handleFinish = () => {
-    if (window.confirm(t.live_finish_confirm)) { void finishLiveMatchRemote(); finishLive(); navigate('/app'); }
+  const handleFinish = async () => {
+    // ⚠️ Esperar el reintento final de eventos pendientes ANTES de limpiar
+    // el store local — si no, un evento que falló en sincronizar durante el
+    // partido queda huérfano (finishLive() borra liveEvents).
+    if (window.confirm(t.live_finish_confirm)) { await finishLiveMatchRemote(); finishLive(); navigate('/app'); }
   };
   const handleDiscard = () => {
     if (window.confirm(t.live_discard_confirm)) { void discardLiveMatchRemote(); closeLive(); navigate('/app'); }
