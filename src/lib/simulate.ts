@@ -49,10 +49,10 @@ export const simulateMatch = ({
   const rng = new PRNG(seed);
   const events: HandballEvent[] = [];
 
-  const homeField = home.players.filter((p) => !p.position.toLowerCase().startsWith('arquero'));
-  const homeGK    = home.players.filter((p) =>  p.position.toLowerCase().startsWith('arquero'));
-  const awayField = away.players.filter((p) => !p.position.toLowerCase().startsWith('arquero'));
-  const awayGK    = away.players.filter((p) =>  p.position.toLowerCase().startsWith('arquero'));
+  const homeField = home.players.filter((p) => !(p.position ?? '').toLowerCase().startsWith('arquero'));
+  const homeGK    = home.players.filter((p) =>  (p.position ?? '').toLowerCase().startsWith('arquero'));
+  const awayField = away.players.filter((p) => !(p.position ?? '').toLowerCase().startsWith('arquero'));
+  const awayGK    = away.players.filter((p) =>  (p.position ?? '').toLowerCase().startsWith('arquero'));
 
   // Fallback: fake rival roster (only used for shooter/goalkeeper identity)
   const awayShooters = awayField.length > 0

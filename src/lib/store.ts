@@ -272,7 +272,14 @@ export const useMatchStore = create<MatchStoreState>()(
         if (s.status === 'live') return;
         const match = s.completed.find((m) => m.id === id);
         if (!match) return;
+        // Mismo fix que en matches-page.tsx handleStartMatch: sincronizar
+        // selectedTeamId con el equipo real de ESTE partido, si no
+        // selectHomeTeam() puede quedar apuntando a cualquier otro equipo
+        // que haya sido el "seleccionado" antes (paneles de lineup/formación
+        // mostrarían el plantel equivocado al reabrir el partido).
+        const reopenedTeam = s.teams.find((t) => t.name === match.home);
         set({
+          selectedTeamId: reopenedTeam?.id ?? null,
           status: 'live',
           liveMatch: {
             id: match.id,

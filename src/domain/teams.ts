@@ -50,7 +50,7 @@ export const validatePlayer = (
     if (clash) errors.number = `Ya lo usa ${clash.name}`;
   }
 
-  if (!draft.position.trim()) {
+  if (!(draft.position ?? '').trim()) {
     errors.position = 'Elegí una posición';
   }
 

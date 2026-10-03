@@ -38,7 +38,7 @@ import { EventEditDialog } from './event-edit-dialog';
 import { eventChangesPossession, otherTeam } from '@/domain/recommendations';
 import { LiveMatchFree } from './live-match-free';
 import { LineupSlidebar } from './lineup-slidebar';
-import { softDeleteEventRemote, discardLiveMatchRemote } from '@/lib/sync';
+import { softDeleteEventRemote, discardLiveMatchRemote, finishLiveMatchRemote } from '@/lib/sync';
 import { hasCompleteMode, hasFormationAnalysis, usePlan } from '@/lib/use-plan';
 import { isClubReadOnly } from '@/lib/club-context';
 
@@ -501,8 +501,14 @@ const LiveMatchPagePro = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingShot, pendingTagged, teams, match, events]);
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (window.confirm(t.live_finish_confirm)) {
+      // ⚠️ Esperamos el reintento final de eventos que hayan fallado en subir
+      // durante el partido ANTES de limpiar el store local y navegar — si no,
+      // un evento que no llegó a sincronizarse queda huérfano para siempre
+      // (finishLive() borra liveEvents, con lo que se pierde el único lugar
+      // desde el que se podía reintentar).
+      await finishLiveMatchRemote();
       finishLive();
       navigate('/app');
     }
